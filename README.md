@@ -21,6 +21,7 @@ lugares diferentes:
 | Pergunta | Onde o sistema responde |
 |---|---|
 | *Por onde eu começo hoje?* | tela **Hoje** — vencidos, prazo do dia, delegados a conferir, 1:1 pendente |
+| *E onde isso cabe?* | a **agenda do dia**, ao lado da fila, com os vãos livres calculados |
 | *Como está a distribuição do trabalho?* | tela **Board** (kanban com arrastar) e **Dashboard** (matriz prioridade × status, Gantt) |
 | *Quem eu estou esquecendo?* | tela **Anotações** — dias desde o último feedback, por pessoa |
 
@@ -86,9 +87,9 @@ O que é fake, o que não é e como demonstrar a captura estão em
 npm test
 ```
 
-171 testes sobre o runner embutido do Node, sem dependência. Cobrem schema, mapeador,
+185 testes sobre o runner embutido do Node, sem dependência. Cobrem schema, mapeador,
 validação, provisionamento das abas, escrita, ingestão, migração, Web App e leitura
-dos resumos.
+dos resumos e da agenda.
 
 Dois arquivos dependem dos dumps da migração, que não estão neste repositório — eles
 se pulam sozinhos e dizem por quê.
@@ -101,6 +102,7 @@ se pulam sozinhos e dizem por quê.
 | `src/CamadaDeAcesso.js` | **a única porta de escrita**: mapeador linha↔objeto, validação, carimbos, contrato de erro |
 | `src/Ingestao.js` | `processarInbox`, os triggers e a verificação de configuração |
 | `src/Resumos.js` | leitura dos compilados de 1:1 no Drive |
+| `src/Agenda.js` | leitura da agenda do dia e cálculo dos vãos livres |
 | `src/Migracao.js` | carga histórica do Notion. **Descartável** — sai quando o ciclo de validação fechar |
 | `src/Skills.js` | o que a construção das skills precisa do lado do Apps Script |
 | `src/WebApp.js` | `doGet` — serve o board e as rotas de painel. Sem regra de negócio |
@@ -110,7 +112,7 @@ se pulam sozinhos e dizem por quê.
 | `mock/apps-script.js` | os dublês dos serviços do Google |
 | `mock/semente.js` | dados fictícios, com datas relativas a hoje |
 | `mock/ponte.js` | o `google.script.run` do navegador, traduzido para `POST /api` |
-| `test/` | os 171 testes |
+| `test/` | os 185 testes |
 | `ARQUITETURA.md` | como funciona por dentro, e o que nunca pode ser "simplificado" |
 | `EXECUTAR.md` | a execução local em detalhe |
 | `DEPLOY.md` | publicar numa conta Google de verdade |
@@ -129,5 +131,5 @@ Também ficam de fora os dumps da migração (observações nominais sobre pesso
 
 ## Stack
 
-Google Apps Script (V8) · HtmlService · Google Sheets · Google Drive · Google Docs.
+Google Apps Script (V8) · HtmlService · Google Sheets · Google Drive · Google Docs · Google Calendar.
 Nenhuma biblioteca de terceiros, nem no servidor nem no navegador.

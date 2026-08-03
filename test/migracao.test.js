@@ -193,7 +193,7 @@ test('as 60 anotações entram com a FK resolvida', () => {
   ctx.lerAnotacoes_().forEach((a) => assert.ok(idsValidos.has(a.pessoa_id)));
 });
 
-test('os valores LEVTY viram os booleanos certos, nas 60', () => {
+test('os valores da empresa viram os booleanos certos, nas 60', () => {
   const ctx = migrado();
   ctx.importAnotacoes(ANOTACOES);
 
@@ -202,11 +202,11 @@ test('os valores LEVTY viram os booleanos certos, nas 60', () => {
 
   ANOTACOES.forEach((origem) => {
     const destino = porNotion[origem.id];
-    const marcados = Object.keys(ctx.VALORES_LEVTY)
-      .filter((r) => destino[ctx.VALORES_LEVTY[r]] === true);
+    const marcados = Object.keys(ctx.VALORES_EMPRESA)
+      .filter((r) => destino[ctx.VALORES_EMPRESA[r]] === true);
     assert.strictEqual(marcados.length, origem.valores.length, origem.id);
     origem.valores.forEach((rotulo) => {
-      assert.strictEqual(destino[ctx.VALORES_LEVTY[rotulo]], true, `${origem.id} / ${rotulo}`);
+      assert.strictEqual(destino[ctx.VALORES_EMPRESA[rotulo]], true, `${origem.id} / ${rotulo}`);
     });
   });
 });

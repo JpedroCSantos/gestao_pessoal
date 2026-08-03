@@ -22,7 +22,7 @@ const path = require('path');
 
 const { carregarProjeto, SRC } = require('./emulador');
 const { criarPasta, criarArquivo } = require('./apps-script');
-const { semear, RESUMOS, isoDe } = require('./semente');
+const { semear, RESUMOS, isoDe, eventosDeHoje } = require('./semente');
 
 const PORTA = Number(process.env.PORTA || 8080);
 const INBOX_LOCAL = path.join(__dirname, 'inbox');
@@ -48,6 +48,7 @@ function montar() {
 
   const projeto = carregarProjeto({
     pastas: pastas,
+    eventos: eventosDeHoje(),
     propriedades: {
       INBOX_FOLDER_ID: pastas.inbox.getId(),
       PROCESSADOS_FOLDER_ID: pastas.processados.getId(),

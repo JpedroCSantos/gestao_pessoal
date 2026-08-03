@@ -62,7 +62,7 @@ test('envelope de anotação: tipo_nota vira tipo, valores viram booleanos', () 
   assert.strictEqual(t.valor_qualidade, false, 'o que não veio é false, não indefinido');
 });
 
-test('rótulo LEVTY tolera falta de acento e caixa', () => {
+test('rótulo de valor tolera falta de acento e caixa', () => {
   // Ditado por voz não garante o acento de "Autogestão".
   const { ctx } = montarIngestao();
   const t = ctx.traduzirEnvelopeDeAnotacao_({ valores: ['autogestao', 'TRANSPARENCIA'] });
@@ -70,7 +70,7 @@ test('rótulo LEVTY tolera falta de acento e caixa', () => {
   assert.strictEqual(t.valor_transparencia, true);
 });
 
-test('rótulo LEVTY inventado é recusado', () => {
+test('rótulo de valor inventado é recusado', () => {
   const { ctx } = montarIngestao();
   assert.strictEqual(
     classeDoErroLancado(ctx, () =>

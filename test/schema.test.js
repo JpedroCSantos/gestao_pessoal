@@ -62,15 +62,15 @@ test('toda coluna de lista declara opcoes, e só elas', () => {
   });
 });
 
-test('VALORES_LEVTY aponta para colunas que existem em Anotações', () => {
+test('VALORES_EMPRESA aponta para colunas que existem em Anotações', () => {
   // O mapa é a fonte da tradução do envelope; se ele e o schema divergirem, a nota entra
   // com valor perdido em silêncio.
-  Object.values(ctx.VALORES_LEVTY).forEach((campo) => {
+  Object.values(ctx.VALORES_EMPRESA).forEach((campo) => {
     assert.ok(ctx.colunaPorCampo_(ctx.COLUNAS_ANOTACOES, campo), `${campo} não existe no schema`);
   });
   const noSchema = ctx.COLUNAS_ANOTACOES
     .filter((c) => c.campo.startsWith('valor_')).map((c) => c.campo).sort();
-  assert.deepStrictEqual(Object.values(ctx.VALORES_LEVTY).sort(), noSchema);
+  assert.deepStrictEqual(Object.values(ctx.VALORES_EMPRESA).sort(), noSchema);
 });
 
 test('todo schema tem id, e as abas de dados têm os carimbos', () => {

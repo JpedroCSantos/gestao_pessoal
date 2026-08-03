@@ -39,6 +39,7 @@ de provar que o app funciona.
 | Planilha | Google Sheets | matriz em memória, com o mesmo comportamento de célula vazia e grade fixa |
 | Pastas e arquivos | Google Drive | objetos em memória |
 | Docs de resumo | Google Docs | texto em memória |
+| Agenda | Google Calendar | eventos sintéticos de hoje, em `mock/semente.js` |
 | `google.script.run` | ponte do HtmlService | `fetch` para `POST /api` (`mock/ponte.js`) |
 | Dados | o time real | `mock/semente.js`, tudo inventado |
 | Trigger de 10 min | agendador do Apps Script | o botão **Sincronizar** |
@@ -72,6 +73,13 @@ Cinco minutos, na ordem que conta a história:
 
 1. **Hoje.** A frase do topo é o produto da tela — ela conclui em vez de exibir uma
    contagem. Repare que o card travado no cliente não está na fila do dia.
+
+   À direita, a **agenda do dia**: o próximo compromisso numa tira em cima, e a linha do
+   tempo embaixo com os **vãos livres desenhados do tamanho que têm** — é ali que se vê onde
+   o card vencido cabe. A agenda sintética tem, de propósito, duas reuniões colidindo às 15h
+   (que é o que quebra layout ingênuo, e por isso elas dividem a largura), um evento de dia
+   inteiro na faixa do topo, um vão de 2h30 no meio da manhã e um compromisso recusado que
+   **não** deve aparecer em lugar nenhum.
 2. **Board.** Arraste um card entre colunas: ele se move sob o cursor e só depois o
    servidor confirma. Solte em **Delegado** — abre o seletor de pessoas, porque um card
    delegado a ninguém é um estado quebrado.

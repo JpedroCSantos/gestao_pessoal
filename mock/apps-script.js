@@ -206,14 +206,30 @@ function iterador(itens) {
   return { hasNext: () => i < itens.length, next: () => itens[i++] };
 }
 
-/** Formatação de data compatível com os padrões que o projeto usa. */
+/**
+ * Formatação de data compatível com os padrões que o projeto usa.
+ *
+ * Lista fechada, e não um formatador de verdade: cada padrão entra aqui quando o projeto
+ * passa a usá-lo. Padrão desconhecido **levanta erro** em vez de devolver algo parecido —
+ * foi assim que `HH:mm` apareceu, quando a agenda entrou: o formato antigo casava por
+ * `includes('HH')` e devolvia data e hora completas, e a coluna saiu com `NaN:NaN`.
+ */
 function formatDate(data, tz, formato) {
   const p = (n) => String(n).padStart(2, '0');
   const dia = `${data.getFullYear()}-${p(data.getMonth() + 1)}-${p(data.getDate())}`;
-  const hora = `${p(data.getHours())}:${p(data.getMinutes())}:${p(data.getSeconds())}`;
-  if (formato.includes('HH')) return `${dia}T${hora}`;
-  if (formato === 'dd/mm/yyyy') return `${p(data.getDate())}/${p(data.getMonth() + 1)}/${data.getFullYear()}`;
-  return dia;
+  const hhmm = `${p(data.getHours())}:${p(data.getMinutes())}`;
+
+  if (formato === 'yyyy-MM-dd') return dia;
+  if (formato === "yyyy-MM-dd'T'HH:mm:ss") return `${dia}T${hhmm}:${p(data.getSeconds())}`;
+  if (formato === 'HH:mm') return hhmm;
+  if (formato === 'dd/MM/yyyy' || formato === 'dd/mm/yyyy') {
+    return `${p(data.getDate())}/${p(data.getMonth() + 1)}/${data.getFullYear()}`;
+  }
+
+  throw new Error(
+    `formatDate: o dublê não conhece o padrão "${formato}". Acrescente-o em ` +
+    'mock/apps-script.js — devolver algo aproximado transformaria o teste em decoração.'
+  );
 }
 
 /**
@@ -338,7 +354,35 @@ function criarAmbiente(opcoes = {}) {
       },
     },
     MimeType: { PLAIN_TEXT: 'text/plain' },
+
+    /**
+     * Agenda dublê. Recebe os eventos por `opcoes.eventos`, cada um como
+     * `{ titulo, inicio, fim, diaInteiro, status, local }` — `inicio`/`fim` são Date.
+     *
+     * `getEventsForDay` filtra pelo dia de verdade, e não devolve a lista inteira: é assim
+     * que o projeto se comporta contra o Calendar real, e um dublê que ignora a data
+     * esconderia um filtro faltando no código.
+     */
+    CalendarApp: {
+      GuestStatus: {
+        YES: 'YES', NO: 'NO', MAYBE: 'MAYBE', INVITED: 'INVITED', OWNER: 'OWNER',
+      },
+      getDefaultCalendar: () => ({
+        getName: () => 'agenda principal',
+        getEventsForDay(data) {
+          return (opcoes.eventos || [])
+            .filter((e) => mesmoDia(e.inicio, data))
+            .map(criarEvento);
+        },
+      }),
+    },
   };
+
+  function mesmoDia(a, b) {
+    return a.getFullYear() === b.getFullYear()
+      && a.getMonth() === b.getMonth()
+      && a.getDate() === b.getDate();
+  }
 
   function criarLock(tipo) {
     return {
@@ -358,4 +402,26 @@ function criarAmbiente(opcoes = {}) {
   return ambiente;
 }
 
-module.exports = { criarAmbiente, criarSpreadsheet, criarSheet, criarPasta, criarArquivo };
+/**
+ * Um evento de agenda dublê.
+ *
+ * `getMyStatus` levanta erro quando o evento não tem convidado, como o CalendarApp de
+ * verdade faz — é o caso que o `recusado_()` precisa engolir sem excluir o compromisso.
+ */
+function criarEvento(dados) {
+  return {
+    getTitle: () => dados.titulo,
+    getStartTime: () => dados.inicio,
+    getEndTime: () => dados.fim,
+    isAllDayEvent: () => dados.diaInteiro === true,
+    getLocation: () => dados.local || '',
+    getMyStatus() {
+      if (!dados.status) throw new Error('evento sem convidados');
+      return dados.status;
+    },
+  };
+}
+
+module.exports = {
+  criarAmbiente, criarSpreadsheet, criarSheet, criarPasta, criarArquivo, criarEvento,
+};

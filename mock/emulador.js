@@ -25,7 +25,7 @@ const SRC = path.join(RAIZ, 'src');
  * passando, é porque nada depende dela; se quebrar aqui, quebra lá também.
  */
 const ARQUIVOS = [
-  'Código.js', 'CamadaDeAcesso.js', 'Ingestao.js', 'Migracao.js',
+  'Código.js', 'CamadaDeAcesso.js', 'Agenda.js', 'Ingestao.js', 'Migracao.js',
   'Resumos.js', 'Skills.js', 'WebApp.js',
 ];
 

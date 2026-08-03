@@ -119,15 +119,74 @@ clasp push
 
 ### Depois de subir
 
-- **Escopo novo pede reautorização.** Se a versão introduziu um serviço que o projeto não
-  usava (`DocumentApp`, por exemplo), a primeira execução pede autorização de novo. Não é
-  problema, mas não pode ser surpresa.
 - **Coluna nova no schema** exige rodar o `setupXxx` da aba correspondente. A guarda de
   cabeçalho aceita acréscimo à direita sem tocar no dado existente — ver
-  [ARQUITETURA.md](ARQUITETURA.md#26-a-guarda-de-cabeçalho).
+  [ARQUITETURA.md](ARQUITETURA.md#27-a-guarda-de-cabeçalho).
 - **Coluna removida do schema não some da planilha.** `ajustarGrade_` só apara coluna
   excedente em aba nova. Apagar é manual, e o momento barato é enquanto ela ainda é a
   última à direita.
+
+> ### ⚠️ Serviço novo exige autorizar **no editor** — o Web App não pede
+>
+> Se a versão introduziu um serviço que o projeto não usava (`DocumentApp`, `CalendarApp`),
+> a implantação vai falhar com *"The script does not have permission to perform that
+> action"*, e **não** vai mostrar tela de login.
+>
+> Isso não é bug: a tela de consentimento do Google **não pode aparecer dentro de um Web
+> App**. A implantação roda com o que já foi autorizado, e faltando escopo ela só erra.
+> Republicar não resolve, porque republicar não pede autorização.
+>
+> **O que resolve:** abrir o editor do Apps Script, escolher no seletor a função que usa o
+> serviço novo (`listAgenda`, por exemplo), executar, e aceitar o acesso na tela que aparece.
+> Depois disso o Web App funciona — sem republicar de novo.
+>
+> Ordem completa quando entra serviço novo:
+> `clasp push` → **rodar a função no editor e aceitar** → republicar → conferir no `/exec`.
+
+### Os escopos são declarados à mão, e por quê
+
+O `src/appsscript.json` declara `oauthScopes` explicitamente. Isso **desliga** a detecção
+automática do Apps Script — e foi por necessidade, não por preferência.
+
+Quando a agenda entrou, a detecção automática não pediu o escopo do Calendar: o editor não
+mostrava tela de consentimento, e o Web App falhava com *"does not have permission"* mesmo
+depois de rodar a função à mão. Declarar a lista resolve, porque o Apps Script passa a pedir
+o que está escrito em vez do que ele achou.
+
+O ganho de tabela: **`calendar.readonly` no lugar de `auth/calendar`.** O app só lê a agenda —
+nunca cria, move nem apaga compromisso —, e a própria mensagem de erro do Google confirma que
+o escopo restrito serve:
+
+```
+Required permissions: (https://www.googleapis.com/auth/calendar ||
+                       https://www.googleapis.com/auth/calendar.readonly ||
+                       https://www.google.com/calendar/feeds)
+```
+
+A lista atual, e de onde cada um vem:
+
+| escopo | serviço | onde é usado |
+|---|---|---|
+| `auth/spreadsheets` | `SpreadsheetApp` | tudo |
+| `auth/drive` | `DriveApp` | inbox, painéis, pasta de resumos |
+| `auth/documents` | `DocumentApp` | leitura do texto dos resumos |
+| `auth/calendar.readonly` | `CalendarApp` | agenda do dia |
+| `auth/script.scriptapp` | `ScriptApp` | `instalarTriggers` |
+
+`PropertiesService`, `LockService`, `HtmlService`, `Utilities`, `Session` e `Logger` não pedem
+escopo.
+
+> ### ⚠️ Serviço novo agora exige uma linha aqui
+>
+> Este é o custo de declarar a lista: **a detecção automática está desligada.** Um
+> `GmailApp` acrescentado ao código não ganha escopo sozinho — ele falha com "does not have
+> permission" e nada no código local indica o motivo.
+>
+> Depois de qualquer mudança na lista, rode no editor `verificarConfiguracao()` (exercita
+> Sheets, Drive e triggers) e `listAgenda()` (Calendar). Escopo faltando aparece ali,
+> nomeado, e não em produção três dias depois.
+>
+> Para voltar à detecção automática: apague o bloco `oauthScopes` inteiro.
 
 ---
 

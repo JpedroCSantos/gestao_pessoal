@@ -338,6 +338,90 @@ button, input, select, textarea { font: inherit; color: inherit; }
    isso mais rápido que número. O número continua lá para quem precisa do exato. */
 .matriz .celula { font-weight: 600; border-radius: 6px; }
 
+/* ============================ AGENDA DO DIA ============================== */
+/* Duas colunas na Hoje. A da direita é outro eixo — tempo, não prioridade —, e é por isso
+   que ela não recria as "duas ordens de leitura paralelas" que a versão anterior tinha.
+   Ver `04`. */
+/**
+ * Ocupa a largura disponível: a fila cresce, e a agenda cresce até um limite.
+ *
+ * Duas correções moram aqui. A primeira: `.hoje` tem `max-width: 900px`, e deixar isso
+ * valer para a grade fazia a agenda tirar espaço da fila em vez de preencher o vazio à
+ * direita. A segunda: cravar 900 + 340 resolvia a proporção mas deixava o resto da tela em
+ * branco.
+ *
+ * A agenda tem teto porque ela é uma linha do tempo — passados ~420px o gráfico só fica
+ * mais largo, sem dizer mais nada. Quem absorve a sobra é a fila.
+ *
+ * O teto geral de 1900px é só sanidade de monitor ultrawide: a partir dali a linha do card
+ * fica com um vão enorme entre o título e os badges.
+ */
+.hoje-duas {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
+  gap: 24px; align-items: start; max-width: 1900px;
+}
+.hoje-fila { min-width: 0; }
+/* Sem `sticky`: com a escala vertical atual a coluna passa da altura da janela, e fixá-la
+   no topo esconderia o fim do dia — que é justamente o que se quer ver às 17h. */
+.hoje-agenda { min-width: 0; }
+
+.ag-cab { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.ag-cab .secao-titulo { margin: 0; }
+
+.ag-caixa {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+}
+.ag-dia-inteiro { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.ag-dia-inteiro span {
+  font-size: 11.5px; font-weight: 500; color: var(--primary-dark);
+  background: var(--primary-soft); padding: 5px 10px; border-radius: 7px;
+}
+.ag-rodape { font-size: 11.5px; color: var(--sutil); margin: 9px 2px 0; }
+
+/* --- o alerta do próximo, acima da linha do tempo --- */
+/* Compacto de propósito: é companheiro da linha do tempo, não o produto da coluna. */
+.ag-foco {
+  background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--primary);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 10px 13px; margin-bottom: 8px;
+}
+.ag-foco.agora { border-left-color: var(--bad); }
+.ag-foco.fim { border-left-color: var(--ok); }
+.ag-foco-quem { font-size: 14px; font-weight: 600; line-height: 1.3; margin: 1px 0; }
+.ag-foco-obs { font-size: 10.5px; color: var(--muted); }
+
+/* --- a linha do tempo --- */
+.ag-tempo { position: relative; margin: 10px 12px 12px 40px; }
+.ag-hora-marca { position: absolute; left: -40px; right: 0; border-top: 1px dashed var(--border); }
+.ag-hora-marca span {
+  position: absolute; left: 0; top: -7px; font-size: 10px; color: var(--sutil);
+  font-variant-numeric: tabular-nums; background: var(--surface); padding-right: 4px;
+}
+/* O vão é o produto deste formato: é ele que responde "onde o trabalho cabe". */
+.ag-vao {
+  position: absolute; left: 0; right: 0; border-radius: 6px;
+  background: repeating-linear-gradient(135deg, #f0fdf4 0 6px, #ecfdf5 6px 12px);
+  border: 1px dashed #86efac; display: flex; align-items: center; justify-content: center;
+}
+.ag-vao span { font-size: 10px; font-weight: 600; color: #15803d; }
+.ag-bloco {
+  position: absolute; border-radius: 7px; padding: 4px 7px; overflow: hidden;
+  background: var(--primary-soft); border-left: 3px solid var(--primary);
+  display: flex; flex-direction: column; gap: 1px;
+}
+.ag-bloco.passou { background: var(--bg); border-left-color: var(--border); opacity: .6; }
+.ag-bloco b {
+  font-size: 11px; font-weight: 600; color: var(--primary-dark); line-height: 1.25;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ag-bloco.passou b { color: var(--muted); }
+.ag-bloco span { font-size: 9.5px; color: var(--sutil); font-variant-numeric: tabular-nums; }
+.ag-agora { position: absolute; left: -40px; right: 0; height: 2px; background: var(--bad); z-index: 3; }
+.ag-agora b {
+  position: absolute; left: -2px; top: -8px; font-size: 9px; color: #fff;
+  background: var(--bad); padding: 1px 4px; border-radius: 4px; font-weight: 600;
+}
+
 /* ============================ GANTT ====================================== */
 .gantt { display: flex; overflow-x: auto; }
 .gt-nomes { flex: none; width: 250px; border-right: 1px solid var(--border); background: var(--surface); }
@@ -564,7 +648,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .coluna { max-width: none; }
   .pessoa-linha { grid-template-columns: 1fr 80px; grid-row-gap: 7px; }
   .dupla { grid-template-columns: 1fr; }
+  /* A agenda desce para baixo da fila: em tela estreita a coluna comeria a fila, e a ordem
+     de leitura continua sendo trabalho primeiro. */
+  .hoje-duas { grid-template-columns: 1fr; }
 }
+
+/* Não há media query intermediária: o `minmax(300px, 420px)` da grade já encolhe a agenda
+   até o piso sozinho, e a fila cede o resto. Um breakpoint aqui seria uma segunda regra
+   repetindo o que a primeira faz — e as duas sairiam de sincronia na próxima mudança. */
 </style>
 </head>
 <body>
@@ -786,6 +877,12 @@ var pessoasPorId = {};
 var anotacoes = null;          // null = ainda não carregou
 var erroAnotacoes = '';
 
+/* A agenda carrega numa chamada própria: o Calendar é um serviço a mais, e se ele demorar
+   ou falhar a fila do dia já tem que estar na tela. Falha aqui é uma coluna com aviso, e
+   não uma tela Hoje que não abre. */
+var agenda = null;             // null = ainda não carregou
+var erroAgenda = '';
+
 var resumos = null;            // { pessoas, orfas, inativos } — null = ainda não carregou
 var erroResumos = '';
 var resumoAberto = null;       // { id, titulo, texto, url } do que está na tela
@@ -872,6 +969,7 @@ function atualizarSino() {
    ========================================================================== */
 function recarregarTudo() {
   carregar();
+  carregarAgenda();
   if (anotacoes !== null) carregarAnotacoesEmSilencio();
 }
 
@@ -921,6 +1019,28 @@ function carregarResumos() {
     .withSuccessHandler(function (r) { resumos = r; erroResumos = ''; desenhar(); })
     .withFailureHandler(function (err) { resumos = null; erroResumos = mensagem(err); desenhar(); })
     .listResumos();
+}
+
+/**
+ * A agenda, em chamada própria.
+ *
+ * Não redesenha a tela inteira ao pedir — a fila do dia já está lá, e trocá-la por
+ * "carregando" para buscar a coluna da direita seria piorar o que já funciona. Quando a
+ * resposta chega, redesenha só se a tela Hoje ainda estiver aberta.
+ */
+function carregarAgenda() {
+  google.script.run
+    .withSuccessHandler(function (a) {
+      agenda = a;
+      erroAgenda = '';
+      if (visao === 'hoje') desenhar();
+    })
+    .withFailureHandler(function (err) {
+      agenda = null;
+      erroAgenda = mensagem(err);
+      if (visao === 'hoje') desenhar();
+    })
+    .listAgenda();
 }
 
 function carregarAnotacoesEmSilencio() {
@@ -1006,24 +1126,203 @@ function htmlHoje() {
 
   var jaListados = listaVencidos.concat(listaHoje, listaAmanha).map(function (c) { return c.id; });
 
-  return '<div class="pagina hoje">' +
-    '<div class="hoje-cab">' +
-      '<div class="dia">' + d.getDate() + ' de ' + MESES[d.getMonth()] + ' de ' + d.getFullYear() + '</div>' +
-      veredito(listaVencidos, listaHoje, listaAmanha) +
-    '</div>' +
+  /* Duas colunas, e a da direita é de outra natureza — ver `04`. A fila responde "o quê";
+     a agenda responde "quando cabe". Não competem pela mesma ordem de leitura, que foi o
+     motivo de a divisão anterior (duas colunas de trabalho) ter sido desfeita. */
+  return '<div class="pagina hoje hoje-duas">' +
+    '<div class="hoje-fila">' +
+      '<div class="hoje-cab">' +
+        '<div class="dia">' + d.getDate() + ' de ' + MESES[d.getMonth()] + ' de ' + d.getFullYear() + '</div>' +
+        veredito(listaVencidos, listaHoje, listaAmanha) +
+      '</div>' +
 
-    bloco('Vencido', 'b-vencido', listaVencidos, 'Nada vencido.') +
-    bloco('Vence hoje', 'b-hoje', listaHoje, 'Nada vencendo hoje.') +
-    bloco('Amanhã', 'b-amanha', listaAmanha, 'Nada para amanhã.') +
+      bloco('Vencido', 'b-vencido', listaVencidos, 'Nada vencido.') +
+      bloco('Vence hoje', 'b-hoje', listaHoje, 'Nada vencendo hoje.') +
+      bloco('Amanhã', 'b-amanha', listaAmanha, 'Nada para amanhã.') +
 
-    '<div class="secao"><p class="secao-titulo">De olho</p>' +
-      '<div class="de-olho">' +
-        olhoDelegados(delegadosAConferir(jaListados)) +
-        olhoCliente(aguardandoCliente()) +
-        olho1a1() +
+      '<div class="secao"><p class="secao-titulo">De olho</p>' +
+        '<div class="de-olho">' +
+          olhoDelegados(delegadosAConferir(jaListados)) +
+          olhoCliente(aguardandoCliente()) +
+          olho1a1() +
+        '</div>' +
       '</div>' +
     '</div>' +
+
+    '<aside class="hoje-agenda">' + htmlAgenda() + '</aside>' +
   '</div>';
+}
+
+/* ==========================================================================
+   AGENDA DO DIA
+   --------------------------------------------------------------------------
+   Linha do tempo com os vãos desenhados, e o próximo compromisso em destaque
+   acima dela. Ver `04`.
+
+   Os dois respondem perguntas diferentes e é por isso que os dois ficaram: o
+   destaque responde "o que vem agora", que se lê de relance; a linha do tempo
+   responde "onde o trabalho cabe", que é o que nem o app nem o Google Calendar
+   dão isolados. O que nenhum dos dois faz é repetir a lista de reuniões — para
+   isso o Calendar já basta.
+   ========================================================================== */
+
+function htmlAgenda() {
+  var cab = '<div class="ag-cab"><p class="secao-titulo">Agenda de hoje</p></div>';
+
+  if (erroAgenda) {
+    return cab + '<div class="ag-caixa"><div class="erro"><b>Agenda indisponível.</b>' +
+      '<code>' + esc(erroAgenda) + '</code></div></div>';
+  }
+  if (!agenda) return cab + '<p class="carregando">Carregando agenda…</p>';
+
+  return cab + faixaDiaInteiro() + focoAgenda() + agendaLinha() + rodapeAgenda();
+}
+
+/* Evento de dia inteiro não tem hora para ocupar, então não entra na linha do tempo nem
+   na lista: vira faixa no topo. Ver `04`. */
+function faixaDiaInteiro() {
+  if (!agenda.diaInteiro.length) return '';
+  return '<div class="ag-dia-inteiro">' + agenda.diaInteiro.map(function (e) {
+    return '<span>' + esc(e.titulo) + '</span>';
+  }).join('') + '</div>';
+}
+
+/** O total ocupado e o total livre, que é a leitura que nenhum dos três formatos dá sozinho. */
+function rodapeAgenda() {
+  var livre = agenda.vaos.reduce(function (s, v) { return s + v.minutos; }, 0);
+  if (!agenda.eventos.length && !livre) return '';
+
+  return '<p class="ag-rodape">' + duracao(agenda.ocupadoMin) + ' em reunião · ' +
+    duracao(livre) + ' livre entre ' + horaCurta(agenda.inicioMin) + ' e ' +
+    horaCurta(agenda.fimMin) + '</p>';
+}
+
+/* --------------------------- o alerta do próximo -------------------------- */
+
+/**
+ * O que vem agora, numa tira acima da linha do tempo.
+ *
+ * Existe porque a linha do tempo responde bem "onde cabe" e mal "e agora?" — achar o
+ * próximo compromisso nela exige encontrar a marca de hora e olhar para baixo. A tira
+ * responde de relance, que é como esta coluna é lida na maior parte do dia.
+ *
+ * Três estados, e o terceiro é o que costuma ser esquecido: quando não há mais nada, dizer
+ * isso é uma informação — e melhor que uma tira vazia ou ausente.
+ */
+function focoAgenda() {
+  if (!agenda.eventos.length) return '';
+
+  var emCurso = agenda.eventos.filter(function (e) {
+    return e.inicioMin <= agenda.agoraMin && e.fimMin > agenda.agoraMin;
+  })[0];
+
+  if (emCurso) {
+    return tiraDeFoco('agora', 'Agora, até ' + emCurso.fim, emCurso.titulo,
+      emCurso.local ? emCurso.local : '');
+  }
+
+  var proximo = agenda.eventos.filter(function (e) { return e.inicioMin > agenda.agoraMin; })[0];
+
+  if (!proximo) {
+    var sobra = agenda.fimMin - agenda.agoraMin;
+    return tiraDeFoco('fim', 'Acabaram os compromissos', 'O resto do dia é seu',
+      sobra > 0 ? duracao(sobra) + ' até ' + horaCurta(agenda.fimMin) : '');
+  }
+
+  var faltam = proximo.inicioMin - agenda.agoraMin;
+  return tiraDeFoco(
+    faltam <= 15 ? 'agora' : '',
+    faltam <= 60 ? 'Em ' + duracao(faltam) : 'Às ' + proximo.inicio,
+    proximo.titulo,
+    faltam > 60 ? duracao(faltam) + ' até lá' : (proximo.local || ''));
+}
+
+function tiraDeFoco(classe, obs, quem, rodape) {
+  return '<div class="ag-foco ' + classe + '">' +
+      '<div class="ag-foco-obs">' + esc(obs) + '</div>' +
+      '<div class="ag-foco-quem">' + esc(quem) + '</div>' +
+      (rodape ? '<div class="ag-foco-obs">' + esc(rodape) + '</div>' : '') +
+    '</div>';
+}
+
+/* ----------------------------- a linha do tempo --------------------------- */
+
+/**
+ * Escala fixa de minuto para pixel, com os vãos desenhados como vão.
+ *
+ * É o único dos três que mostra **onde o trabalho cabe**, que é a pergunta que o Calendar
+ * não responde. Reunião sobreposta divide a largura pelas colunas que o servidor calculou —
+ * sem isso a de baixo simplesmente não existiria na tela.
+ */
+function agendaLinha() {
+  /**
+   * A escala não é estética: ela é o que impede bloco curto de colidir com o vizinho.
+   *
+   * `ALTURA_MINIMA` existe para uma reunião de 5 minutos não virar um traço ilegível — mas
+   * se o mínimo for maior que a altura real, dois compromissos consecutivos se sobrepõem e
+   * os títulos correm um sobre o outro. Com 1.2px por minuto, a reunião de 15 minutos (a
+   * mais curta comum, tipo daily) dá exatamente os 18px do mínimo, e a colisão só volta a
+   * ser possível abaixo disso — onde o `title` do bloco resolve.
+   */
+  var PX_POR_MIN = 1.2;
+  var ALTURA_MINIMA = 18;
+  var alturaTotal = (agenda.fimMin - agenda.inicioMin) * PX_POR_MIN;
+  var topo = function (min) { return (min - agenda.inicioMin) * PX_POR_MIN; };
+
+  var horas = '';
+  for (var m = Math.ceil(agenda.inicioMin / 60) * 60; m <= agenda.fimMin; m += 60) {
+    horas += '<div class="ag-hora-marca" style="top:' + topo(m) + 'px">' +
+      '<span>' + horaCurta(m) + '</span></div>';
+  }
+
+  var vaos = agenda.vaos.map(function (v) {
+    var altura = (v.fimMin - v.inicioMin) * PX_POR_MIN;
+    return '<div class="ag-vao" style="top:' + topo(v.inicioMin) + 'px;height:' + altura + 'px"' +
+        ' title="' + v.inicio + ' – ' + v.fim + '">' +
+        (altura >= 26 ? '<span>' + duracao(v.minutos) + ' livre</span>' : '') +
+      '</div>';
+  }).join('');
+
+  var eventos = agenda.eventos.map(function (e) {
+    var altura = Math.max(ALTURA_MINIMA, (e.fimMin - e.inicioMin) * PX_POR_MIN);
+    var largura = 100 / e.colunas;
+    var passou = e.fimMin <= agenda.agoraMin;
+
+    return '<div class="ag-bloco' + (passou ? ' passou' : '') + '"' +
+        ' style="top:' + topo(e.inicioMin) + 'px;height:' + altura + 'px;' +
+        'left:' + (e.coluna * largura) + '%;width:calc(' + largura + '% - 3px)"' +
+        ' title="' + esc(e.titulo + '\n' + e.inicio + ' – ' + e.fim +
+          (e.local ? '\n' + e.local : '')) + '">' +
+        '<b>' + esc(e.titulo) + '</b>' +
+        (altura >= 34 ? '<span>' + e.inicio + '</span>' : '') +
+      '</div>';
+  }).join('');
+
+  var marcaAgora = (agenda.agoraMin >= agenda.inicioMin && agenda.agoraMin <= agenda.fimMin)
+    ? '<div class="ag-agora" style="top:' + topo(agenda.agoraMin) + 'px"><b>' +
+      agenda.agora + '</b></div>'
+    : '';
+
+  return '<div class="ag-caixa"><div class="ag-tempo" style="height:' + alturaTotal + 'px">' +
+      horas + vaos + eventos + marcaAgora +
+    '</div></div>';
+}
+
+/* ------------------------------- utilidades ------------------------------- */
+
+/** 150 → "2h30". Minuto avulso não interessa aqui; hora e meia-hora bastam para decidir. */
+function duracao(minutos) {
+  if (minutos < 60) return minutos + 'min';
+  var h = Math.floor(minutos / 60);
+  var m = minutos % 60;
+  return h + 'h' + (m ? (m < 10 ? '0' + m : m) : '');
+}
+
+/** 540 → "9h". A régua não precisa de ":00" repetido em toda marca. */
+function horaCurta(minutos) {
+  var h = Math.floor(minutos / 60);
+  var m = minutos % 60;
+  return h + 'h' + (m ? (m < 10 ? '0' + m : m) : '');
 }
 
 /**
@@ -1038,18 +1337,32 @@ function veredito(vencidos, hoje, amanha) {
       return a.prazo.localeCompare(b.prazo);
     })[0];
     var dias = diasEntre(maisAntigo.prazo, hojeIso());
+    var um = vencidos.length === 1;
 
-    return '<p class="veredito urgente">Comece pelos ' + vencidos.length + ' vencidos.</p>' +
-      '<div class="veredito-obs">O mais antigo é “' + esc(maisAntigo.titulo) + '”, ' +
-      (dias === 1 ? 'de ontem' : 'parado há ' + dias + ' dias') + '.' +
-      (hoje.length ? ' Ainda vencem ' + hoje.length + ' hoje.' : '') + '</div>';
+    /* Com um vencido só, "o mais antigo" não faz sentido — não há de quem ser o mais
+       antigo. A frase muda de forma, e não só de número. */
+    var atraso = dias === 1 ? 'vencido ontem' : 'parado há ' + dias + ' dias';
+
+    return '<p class="veredito urgente">' +
+      (um ? 'Comece pelo card vencido.' : 'Comece pelos ' + vencidos.length + ' vencidos.') +
+      '</p>' +
+      '<div class="veredito-obs">' +
+      (um ? '“' + esc(maisAntigo.titulo) + '”, ' + atraso
+          : 'O mais antigo é “' + esc(maisAntigo.titulo) + '”, ' + atraso) + '.' +
+      (hoje.length
+        ? ' Ainda ' + (hoje.length === 1 ? 'vence 1' : 'vencem ' + hoje.length) + ' hoje.'
+        : '') +
+      '</div>';
   }
 
   if (hoje.length) {
     return '<p class="veredito">' + hoje.length +
       (hoje.length === 1 ? ' card vence hoje.' : ' cards vencem hoje.') + '</p>' +
       '<div class="veredito-obs">Nada atrasado' +
-      (amanha.length ? ' — e ' + amanha.length + ' vence amanhã.' : '.') + '</div>';
+      (amanha.length
+        ? ' — e ' + amanha.length + (amanha.length === 1 ? ' vence amanhã.' : ' vencem amanhã.')
+        : '.') +
+      '</div>';
   }
 
   if (amanha.length) {
@@ -2616,6 +2929,7 @@ function botaoSalvar(ocupado) {
 popularSelects();
 carregarPessoas();
 carregar();
+carregarAgenda();
 </script>
 </body>
 </html>

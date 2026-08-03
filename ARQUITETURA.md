@@ -15,6 +15,7 @@
 | Acesso a dado | `src/CamadaDeAcesso.js` | **a única porta de escrita**; mapeador linha↔objeto; contrato de erro |
 | Ingestão | `src/Ingestao.js` | recolhe o inbox do Drive, traduz envelope e chama a camada |
 | Leitura de Docs | `src/Resumos.js` | os compilados de 1:1, lidos do Drive |
+| Leitura da agenda | `src/Agenda.js` | os compromissos de hoje e os vãos entre eles |
 | Entrada HTTP | `src/WebApp.js` | `doGet`. Sem regra de negócio |
 | Interface | `src/Index.html` | 5 telas, CSS e JS inline, sem biblioteca |
 | Migração | `src/Migracao.js` | carga histórica. Descartável |
@@ -74,7 +75,21 @@ App, direto do console do navegador. O sufixo é o que separa a API pública da 
 O servidor local reproduz exatamente essa regra (`mock/servidor.js`, `funcoesPublicas`),
 para o comportamento demonstrado ser o comportamento publicado.
 
-### 2.6 A guarda de cabeçalho
+### 2.6 Os escopos OAuth são declarados à mão
+
+`src/appsscript.json` lista `oauthScopes` explicitamente, o que **desliga a detecção
+automática** do Apps Script. Foi por necessidade: quando `CalendarApp` entrou, a detecção não
+pediu o escopo do Calendar, o editor não oferecia consentimento, e a implantação falhava com
+*"does not have permission"*.
+
+**A consequência é permanente e silenciosa: serviço novo no código exige linha nova na
+lista.** Um `GmailApp` acrescentado sem isso falha em produção, e nada no arquivo local
+aponta o motivo. A lista e o roteiro de verificação estão em [DEPLOY.md](DEPLOY.md).
+
+Efeito colateral bom: o Calendar entra como `calendar.readonly`. Um bug não consegue apagar
+reunião.
+
+### 2.7 A guarda de cabeçalho
 
 `setupXxx` **aborta** se encontrar dados no corpo sob um cabeçalho que não bate com o
 schema. Reescrever os rótulos trocaria o significado do dado embaixo, sem mover nada.
@@ -87,7 +102,7 @@ uma está vazia no cabeçalho **e** no corpo.
 "bonita" seria no meio. Nada no código indexa coluna por número, então a ordem só importa
 para a guarda.
 
-### 2.7 Lock em toda escrita, e a checagem de duplicata dentro dele
+### 2.8 Lock em toda escrita, e a checagem de duplicata dentro dele
 
 `appendRow` não é atômico: duplo clique com latência ou duas abas abertas bastam para
 dois appends disputarem a mesma linha.
@@ -198,6 +213,12 @@ confirmar.
 **Dashboard** tem a matriz prioridade × status e um Gantt cuja barra tem dois segmentos —
 espera (de `criado_em` até o início real) e execução. Um Gantt de `data_inicio → prazo`
 mostraria uma fração dos cards, porque a maioria nunca entrou em `In progress`.
+
+**A coluna da direita da Hoje é a agenda do dia**, lida do Google Calendar pelo `CalendarApp`
+— serviço embutido, sem GCP e sem token. Ela não repete o Calendar: calcula os **vãos** entre
+os compromissos, que é a única leitura que nem o app nem o Calendar dão isolados. A regra que
+sustenta a divisão em duas colunas: *à direita só entra o que responde uma pergunta diferente
+da fila*. A fila responde "o quê"; a agenda, "quando cabe".
 
 **Um princípio atravessa as cinco telas: o que sai da vista é declarado.** A coluna Done
 diz quantos escondeu, o Gantt diz quantos ficaram fora do recorte, Anotações e Resumos

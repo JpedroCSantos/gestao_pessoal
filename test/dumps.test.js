@@ -71,12 +71,12 @@ test('os status e prioridades do dump cabem nas listas', () => {
   });
 });
 
-test('o vocabulário LEVTY do dump é exatamente o do código', () => {
+test('o vocabulário de valores do dump é exatamente o do código', () => {
   const ctx = carregarProjeto();
   const noDump = new Set();
   ANOTACOES.anotacoes.forEach((a) => (a.valores || []).forEach((v) => noDump.add(v)));
 
-  assert.deepStrictEqual([...noDump].sort(), Object.keys(ctx.VALORES_LEVTY).sort());
+  assert.deepStrictEqual([...noDump].sort(), Object.keys(ctx.VALORES_EMPRESA).sort());
 });
 
 test('as 7 pessoas convertem, com criado_em vindo da origem', () => {
@@ -155,8 +155,8 @@ test('as 60 anotações atravessam envelope → schema → linha → leitura', (
     assert.strictEqual(criada.tipo, a.tipo);
     assert.strictEqual(criada.data, a.data);
 
-    const marcados = Object.keys(ctx.VALORES_LEVTY)
-      .filter((r) => criada[ctx.VALORES_LEVTY[r]] === true).length;
+    const marcados = Object.keys(ctx.VALORES_EMPRESA)
+      .filter((r) => criada[ctx.VALORES_EMPRESA[r]] === true).length;
     assert.strictEqual(marcados, a.valores.length, `valores de ${a.id}`);
   });
 });

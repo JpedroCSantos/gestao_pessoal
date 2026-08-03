@@ -336,6 +336,49 @@ function semearAnotacoes(projeto, idsPorNome) {
   return escrever(projeto, projeto.ANOTACOES_TAB_NAME, projeto.COLUNAS_ANOTACOES, objetos);
 }
 
+/**
+ * A agenda de hoje.
+ *
+ * Desenhada para as três telas em avaliação terem o que mostrar: um dia com reunião cedo,
+ * um bloco livre grande no meio da manhã, duas reuniões colidindo à tarde (que é o que
+ * quebra layout ingênuo), um evento de dia inteiro e um recusado — que **não** deve
+ * aparecer em nenhuma delas.
+ *
+ * `hora` e `minuto` em número; a duração em minutos.
+ */
+const EVENTOS = [
+  { titulo: 'Daily do time',              h: 9,  m: 0,  dur: 15, status: 'YES' },
+  { titulo: 'Alinhamento com o Aurora',   h: 9,  m: 30, dur: 60, local: 'Meet', status: 'YES' },
+  // Vão de 10:30 a 13:00 — o bloco em que o card vencido cabe.
+  { titulo: 'Almoço com a liderança',     h: 13, m: 0,  dur: 60 },
+  { titulo: 'Comitê de arquitetura',      h: 15, m: 0,  dur: 90, local: 'Sala 4', status: 'YES' },
+  // Colide com o comitê de propósito: agenda real tem reunião em cima de reunião, e sem
+  // repartir a largura a de baixo desaparece da tela.
+  { titulo: '1:1 com a Camila',           h: 15, m: 30, dur: 45, status: 'YES' },
+  { titulo: 'Retrospectiva do trimestre', h: 17, m: 0,  dur: 60, status: 'MAYBE' },
+  // Recusado: entra na semente para provar que sai da leitura.
+  { titulo: 'Treinamento opcional',       h: 11, m: 0,  dur: 120, status: 'NO' },
+  { titulo: 'Semana de fechamento contábil', diaInteiro: true },
+];
+
+/** Os eventos no formato que o dublê de `CalendarApp` espera — tudo no dia de hoje. */
+function eventosDeHoje() {
+  return EVENTOS.map((e) => {
+    if (e.diaInteiro) {
+      return { titulo: e.titulo, inicio: hoje(), fim: hoje(), diaInteiro: true };
+    }
+    const inicio = hoje();
+    inicio.setHours(e.h, e.m, 0, 0);
+    return {
+      titulo: e.titulo,
+      inicio: inicio,
+      fim: new Date(inicio.getTime() + e.dur * 60000),
+      local: e.local || '',
+      status: e.status,
+    };
+  });
+}
+
 /** ISO `AAAA-MM-DD` de um deslocamento em dias — o nome dos Docs de resumo. */
 function isoDe(dias) {
   const d = dia(dias);
@@ -343,4 +386,4 @@ function isoDe(dias) {
   return d.getFullYear() + '-' + dois(d.getMonth() + 1) + '-' + dois(d.getDate());
 }
 
-module.exports = { semear, PESSOAS, RESUMOS, isoDe, dia, instante };
+module.exports = { semear, PESSOAS, RESUMOS, isoDe, dia, instante, eventosDeHoje };
