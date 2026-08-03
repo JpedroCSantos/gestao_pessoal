@@ -1,0 +1,13 @@
+{
+  "name": "gestao-kanban",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema de gestão sobre Google Sheets + Apps Script. Este package.json serve os testes e a execução local — o código que roda no Google não depende de nada daqui.",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "mock": "node mock/servidor.js"
+  }
+}

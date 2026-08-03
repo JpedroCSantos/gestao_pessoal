@@ -1,0 +1,19 @@
+# O que sobe para o Apps Script.
+#
+# A defesa principal agora é o `rootDir: "src"` do `.clasp.json`: o clasp só enxerga o que
+# está dentro de `src/`, então `mock/`, `test/`, `models/`, `skills/` e `data/` ficam de
+# fora por construção, e não por lembrança de manter uma lista.
+#
+# Esta allowlist continua como segunda linha: se alguém criar `src/utils/` com um arquivo
+# de teste dentro, ele subiria. E um `require` no nível do arquivo derruba TUDO — roda na
+# avaliação e quebra qualquer execução, inclusive as que funcionavam.
+#
+# Sintaxe é a do .gitignore, com uma armadilha: `#` só é comentário no INÍCIO da linha.
+# Comentário no fim de uma linha de padrão vira parte do padrão, e a regra silenciosamente
+# deixa de casar.
+
+**/**
+
+!*.js
+!*.html
+!appsscript.json

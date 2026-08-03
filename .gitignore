@@ -1,0 +1,34 @@
+# ==========================================================================
+#  O que NÃO vai para o repositório
+#
+#  Regra: sobe código e a execução local. Não sobe nada que descreva pessoas
+#  reais, nem identificador de recurso da conta do Google.
+# ==========================================================================
+
+# --- Dado nominal --------------------------------------------------------
+# Os dumps do Notion carregam 60 observações sobre colaboradores identificados
+# pelo nome. É a única coisa aqui que é dado pessoal de verdade.
+# `test/dumps.test.js` e `test/migracao.test.js` se pulam sozinhos sem eles.
+data/
+
+# --- Identificadores da conta --------------------------------------------
+# scriptId do projeto publicado.
+.clasp.json
+
+# --- Contratos e skills, que citam o time real ---------------------------
+# Os contratos usam nomes e títulos de card reais nos exemplos, e as skills
+# carregam a lista nome→id e os IDs das pastas do Drive.
+# O que um leitor externo precisa saber está em ARQUITETURA.md.
+models/
+skills/
+
+# --- Ambiente ------------------------------------------------------------
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
+
+# --- Demonstração --------------------------------------------------------
+# Envelopes largados durante uma demonstração; o exemplo versionado fica.
+mock/inbox/*.json
+!mock/inbox/exemplo-card.json

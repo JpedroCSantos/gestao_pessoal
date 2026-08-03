@@ -1,0 +1,2621 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<style>
+/* ==========================================================================
+   TOKENS — base do model-app (indigo sobre cinza, radius 12, sombra discreta),
+   com as cores de estado dos painéis do Notion, que já são o vocabulário dele.
+   ========================================================================== */
+:root {
+  --primary: #6366f1; --primary-dark: #4f46e5; --primary-soft: #eef2ff;
+  --bg: #f8f9fa; --surface: #ffffff; --border: #e5e7eb; --border-forte: #d1d5db;
+  --text: #1f2937; --muted: #6b7280; --sutil: #9ca3af;
+  --ok: #059669; --warn: #d97706; --bad: #dc2626;
+
+  --radius: 12px; --radius-sm: 8px;
+  --shadow: 0 1px 3px rgba(16,24,40,.06), 0 1px 2px rgba(16,24,40,.04);
+  --shadow-md: 0 4px 12px rgba(16,24,40,.10), 0 2px 4px rgba(16,24,40,.06);
+
+  --s-not-started: #6b7280; --s-not-started-bg: #f3f4f6;
+  --s-in-progress: #3b6591; --s-in-progress-bg: #e8f0fa;
+  --s-done: #1e8449;        --s-done-bg: #e9f7ee;
+  --s-delegado: #a8622d;    --s-delegado-bg: #fbe9dc;
+  --s-sem: #9ca3af;         --s-sem-bg: #f3f4f6;
+
+  --p-alta: #c0392b;  --p-alta-bg: #fdecec;
+  --p-media: #a86a00; --p-media-bg: #fef6e0;
+  --p-baixa: #1e8449; --p-baixa-bg: #e9f7ee;
+
+  --lateral: 216px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+
+/* ============================ SHELL ====================================== */
+.app { display: flex; min-height: 100vh; }
+
+.lateral {
+  width: var(--lateral); flex: none; background: var(--surface);
+  border-right: 1px solid var(--border); display: flex; flex-direction: column;
+  position: sticky; top: 0; height: 100vh; transition: width .16s ease;
+}
+.app.compacta .lateral { width: 58px; }
+
+.lateral-topo { display: flex; align-items: center; gap: 9px; padding: 14px 14px 10px; }
+.marca-ponto {
+  width: 24px; height: 24px; border-radius: 7px; flex: none;
+  background: linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%);
+}
+.marca-nome { font-weight: 650; letter-spacing: -.01em; }
+.recolher {
+  margin-left: auto; border: 0; background: transparent; color: var(--sutil);
+  cursor: pointer; padding: 3px 6px; border-radius: 6px; line-height: 1; font-size: 15px;
+}
+.recolher:hover { background: var(--bg); color: var(--text); }
+
+.menu { padding: 6px 10px; display: flex; flex-direction: column; gap: 2px; }
+.menu-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  border: 0; background: transparent; cursor: pointer; color: var(--muted);
+  padding: 8px 10px; border-radius: 9px; font-weight: 550; font-size: 13.5px; text-align: left;
+  transition: background .12s, color .12s;
+}
+.menu-item:hover { background: var(--bg); color: var(--text); }
+.menu-item.ativa { background: var(--primary-soft); color: var(--primary-dark); }
+.menu-ico { width: 18px; text-align: center; flex: none; font-size: 15px; }
+.menu-sino {
+  margin-left: auto; font-size: 11px; font-weight: 700; background: var(--bad); color: #fff;
+  border-radius: 20px; padding: 0 6px; min-width: 18px; text-align: center;
+}
+.lateral-pe { margin-top: auto; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+
+/* O botão de recolher NUNCA some — ele é o único caminho de volta. Escondê-lo no modo
+   compacto deixava a lateral fechada para sempre. */
+.app.compacta .marca-nome,
+.app.compacta .menu-item span:not(.menu-ico):not(.menu-sino),
+.app.compacta .lateral-pe .btn span { display: none; }
+.app.compacta .menu-item { justify-content: center; padding: 9px 0; }
+.app.compacta .lateral-topo { flex-direction: column; gap: 6px; padding: 14px 0 10px; }
+.app.compacta .recolher { margin: 0; }
+
+.principal { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.topo {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 22px; background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.topo h1 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -.01em; }
+.topo .sub { color: var(--sutil); font-size: 12.5px; }
+.espaco { flex: 1; }
+
+.busca { position: relative; }
+.busca input {
+  width: 230px; padding: 7px 30px 7px 32px; border: 1px solid var(--border);
+  border-radius: 9px; background: var(--bg); outline: none; transition: border-color .12s, background .12s;
+}
+.busca input:focus { border-color: var(--primary); background: var(--surface); }
+.busca .lupa { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--sutil); pointer-events: none; }
+.busca .limpar {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  border: 0; background: transparent; color: var(--sutil); cursor: pointer;
+  padding: 2px 5px; border-radius: 5px; line-height: 1; display: none;
+}
+.busca.tem-texto .limpar { display: block; }
+.busca .limpar:hover { background: var(--border); color: var(--text); }
+
+.btn {
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  padding: 7px 13px; border-radius: 9px; cursor: pointer; font-weight: 550; font-size: 13px;
+  transition: background .12s, border-color .12s; white-space: nowrap;
+}
+.btn:hover:not(:disabled) { background: var(--bg); border-color: var(--border-forte); }
+.btn:disabled { opacity: .55; cursor: default; }
+.btn-primario { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn-primario:hover:not(:disabled) { background: var(--primary-dark); border-color: var(--primary-dark); }
+
+/* ============================ AVISOS ===================================== */
+.faixa { margin: 12px 22px 0; }
+.faixa:empty { display: none; }
+.aviso, .erro {
+  border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-sm);
+  padding: 10px 14px; box-shadow: var(--shadow);
+}
+.aviso { border-left: 3px solid var(--warn); }
+.aviso.ok { border-left-color: var(--ok); }
+.erro { border-left: 3px solid var(--bad); }
+.erro b { display: block; margin-bottom: 3px; }
+.erro code {
+  display: block; margin-top: 7px; font-size: 12px; color: var(--muted);
+  background: var(--bg); padding: 7px 9px; border-radius: 6px; word-break: break-word;
+}
+.carregando { color: var(--muted); padding: 46px 22px; text-align: center; }
+
+.pagina { padding: 18px 22px 44px; }
+.secao-titulo {
+  font-size: 11.5px; font-weight: 650; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--sutil); margin: 0 0 10px; display: flex; align-items: center; gap: 8px;
+}
+.secao-num {
+  background: var(--bg); color: var(--muted); border-radius: 20px; padding: 0 7px;
+  font-size: 11px; letter-spacing: 0;
+}
+.secao + .secao { margin-top: 24px; }
+.vazio-msg { color: var(--sutil); font-size: 13px; margin: 0; padding: 4px 0; }
+.painel {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); overflow: hidden;
+}
+
+/* ============================ HOJE ======================================= */
+/* Uma coluna só, de cima para baixo, na ordem da urgência. A versão de duas colunas
+   criava duas ordens de leitura paralelas: o olho não sabia por onde começar nem como
+   os dois lados se relacionavam. Aqui existe um caminho, e ele é vertical. */
+.hoje { max-width: 900px; }
+.hoje-cab { margin-bottom: 20px; }
+.hoje-cab .dia { font-size: 12.5px; color: var(--sutil); text-transform: uppercase; letter-spacing: .05em; }
+/* O veredito é a coisa mais alta da tela de propósito: ele responde "por onde começo"
+   antes de qualquer lista, que é a pergunta que traz alguém aqui às nove da manhã. */
+.veredito { font-size: 25px; font-weight: 650; letter-spacing: -.025em; margin: 3px 0 0; }
+.veredito.urgente { color: var(--bad); }
+.veredito.calmo { color: var(--ok); }
+.veredito-obs { color: var(--muted); font-size: 13.5px; margin-top: 3px; }
+
+/* Cada bloco de prazo tem uma cor de urgência na aresta. É o que substitui a divisão
+   em colunas: a hierarquia passou a ser vertical e cromática, não espacial. */
+.bloco { margin-bottom: 20px; }
+.bloco-cab {
+  display: flex; align-items: center; gap: 9px; margin: 0 0 8px;
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+}
+.bloco-cab .n {
+  font-size: 11px; font-weight: 700; border-radius: 20px; padding: 0 7px;
+  background: currentColor; color: #fff; letter-spacing: 0;
+}
+.bloco-cab .n span { filter: none; }
+.bloco.b-vencido .bloco-cab { color: var(--bad); }
+.bloco.b-hoje .bloco-cab { color: var(--primary-dark); }
+.bloco.b-amanha .bloco-cab { color: var(--muted); }
+.bloco .painel { border-left: 3px solid currentColor; }
+.bloco.b-vencido .painel { border-left-color: var(--bad); }
+.bloco.b-hoje .painel { border-left-color: var(--primary); }
+.bloco.b-amanha .painel { border-left-color: var(--border-forte); }
+
+.linhas { display: flex; flex-direction: column; }
+.linha {
+  display: flex; align-items: center; gap: 9px; padding: 10px 14px;
+  border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s;
+}
+.linha:last-child { border-bottom: 0; }
+.linha:hover { background: var(--bg); }
+.linha .txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* "De olho": o que se monitora, não o que se executa. Fica embaixo e em cartão menor
+   justamente para não competir com a fila do dia. */
+.de-olho { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.olho {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 13px 15px;
+}
+.olho h3 {
+  margin: 0 0 9px; font-size: 11.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--sutil); display: flex; align-items: center; gap: 7px;
+}
+.olho-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px;
+  border-bottom: 1px solid var(--border); cursor: pointer;
+}
+.olho-item:last-child { border-bottom: 0; }
+.olho-item:hover .olho-txt { color: var(--primary-dark); }
+.olho-txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.olho .vazio-msg { padding: 0; }
+.badge, .status {
+  font-size: 11px; font-weight: 600; padding: 1.5px 7px; border-radius: 5px; white-space: nowrap; flex: none;
+}
+.st-not-started { background: var(--s-not-started-bg); color: var(--s-not-started); }
+.st-in-progress { background: var(--s-in-progress-bg); color: var(--s-in-progress); }
+.st-done        { background: var(--s-done-bg);        color: var(--s-done); }
+.st-delegado    { background: var(--s-delegado-bg);    color: var(--s-delegado); }
+.st-sem-status  { background: var(--s-sem-bg);         color: var(--s-sem); }
+.chip-pessoa {
+  font-size: 11px; color: var(--muted); background: var(--bg);
+  padding: 1.5px 7px; border-radius: 5px; white-space: nowrap; flex: none;
+}
+.dias-fora { font-size: 11px; color: var(--bad); font-weight: 600; flex: none; }
+
+.um-a-um {
+  background: linear-gradient(135deg, var(--primary-soft) 0%, #f5f3ff 100%);
+  border: 1px solid #ddd6fe; border-radius: var(--radius); padding: 14px 16px;
+}
+.um-a-um .quem { font-size: 16px; font-weight: 650; margin: 3px 0; }
+.um-a-um .obs { font-size: 12.5px; color: var(--muted); }
+
+/* ============================ BOARD ====================================== */
+.board { display: flex; gap: 14px; align-items: flex-start; padding: 18px 22px 44px; overflow-x: auto; }
+.coluna {
+  flex: 1 1 0; min-width: 246px; max-width: 340px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  display: flex; flex-direction: column;
+  transition: border-color .12s, background .12s;
+}
+.coluna-cab {
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 13px; border-bottom: 1px solid var(--border);
+  cursor: pointer; user-select: none;
+}
+.coluna-cab:hover .coluna-nome { color: var(--primary); }
+.ponto { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.s-not-started { background: var(--s-not-started); }
+.s-in-progress { background: var(--s-in-progress); }
+.s-done        { background: var(--s-done); }
+.s-delegado    { background: var(--s-delegado); }
+.s-sem-status  { background: var(--s-sem); }
+.coluna-nome { font-weight: 600; font-size: 13px; transition: color .12s; }
+.coluna-num {
+  margin-left: auto; font-size: 12px; color: var(--muted);
+  background: var(--bg); padding: 1px 8px; border-radius: 20px; font-variant-numeric: tabular-nums;
+}
+.coluna-ocultos { font-size: 11px; color: var(--sutil); }
+.coluna-corpo { padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 60px; }
+.coluna-vazia { color: var(--sutil); font-size: 12.5px; text-align: center; padding: 14px 0; margin: 0; }
+.coluna-opcoes {
+  display: flex; align-items: center; gap: 7px; padding: 8px 13px;
+  border-bottom: 1px solid var(--border); background: var(--bg);
+  font-size: 12px; color: var(--muted);
+}
+.coluna-opcoes label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+
+/* Colapsada vira um trilho estreito: devolve a largura para as colunas em movimento,
+   que é o ponto — Done é histórico, e histórico não merece um quinto da tela. */
+.coluna.colapsada { flex: 0 0 46px; min-width: 46px; max-width: 46px; }
+.coluna.colapsada .coluna-cab {
+  flex-direction: column; gap: 10px; border-bottom: 0; padding: 12px 0; height: 100%;
+}
+.coluna.colapsada .coluna-nome { writing-mode: vertical-rl; text-orientation: mixed; }
+.coluna.colapsada .coluna-num { margin: 0; }
+.coluna.colapsada .coluna-corpo,
+.coluna.colapsada .coluna-opcoes { display: none; }
+
+.tile {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 10px 11px; cursor: pointer; position: relative;
+  transition: box-shadow .12s, border-color .12s;
+}
+.tile:hover { box-shadow: var(--shadow-md); border-color: var(--border-forte); }
+.tile:active { cursor: grabbing; }
+.tile.arrastando { opacity: .4; }
+/* Vencido: acento na borda esquerda em vez de badge. A informação aparece na
+   varredura vertical sem competir com prioridade e prazo pela linha de meta. */
+.tile.vencido { border-left: 3px solid var(--bad); }
+.tile-titulo { font-weight: 550; margin-bottom: 7px; word-break: break-word; }
+.tile-titulo.vazio { color: var(--sutil); font-style: italic; font-weight: 400; }
+.tile-linha { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pill { font-size: 11px; font-weight: 600; padding: 1.5px 7px; border-radius: 5px; white-space: nowrap; }
+.p-alta  { background: var(--p-alta-bg);  color: var(--p-alta); }
+.p-media { background: var(--p-media-bg); color: var(--p-media); }
+.p-baixa { background: var(--p-baixa-bg); color: var(--p-baixa); }
+.pill.aguardando { background: var(--primary-soft); color: var(--primary-dark); }
+.prazo { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.prazo.atrasado { color: var(--bad); font-weight: 600; }
+.delegado {
+  margin-top: 7px; font-size: 11.5px; color: var(--s-delegado);
+  background: var(--s-delegado-bg); padding: 2px 7px; border-radius: 5px; display: inline-block;
+}
+.coluna.alvo { border-color: var(--primary); background: var(--primary-soft); }
+.coluna.alvo .coluna-corpo::after {
+  content: ''; display: block; height: 46px; border: 2px dashed var(--primary);
+  border-radius: var(--radius-sm); opacity: .5;
+}
+
+/* ============================ DASHBOARD ================================== */
+.cartoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 12px; }
+.cartao {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 13px 15px; box-shadow: var(--shadow);
+}
+.cartao-num { font-size: 24px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.cartao-rot { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.cartao.alerta .cartao-num { color: var(--bad); }
+
+.matriz { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.matriz th, .matriz td { padding: 9px 12px; text-align: center; border-bottom: 1px solid var(--border); }
+.matriz thead th { font-size: 11.5px; font-weight: 600; color: var(--muted); text-align: center; }
+.matriz tbody th { text-align: left; font-weight: 600; font-size: 13px; }
+.matriz tr:last-child td, .matriz tr:last-child th { border-bottom: 0; }
+.matriz .total { color: var(--muted); font-weight: 600; background: var(--bg); }
+.matriz .zero { color: var(--sutil); }
+/* Intensidade proporcional: a leitura que interessa é "onde a massa está", e cor faz
+   isso mais rápido que número. O número continua lá para quem precisa do exato. */
+.matriz .celula { font-weight: 600; border-radius: 6px; }
+
+/* ============================ GANTT ====================================== */
+.gantt { display: flex; overflow-x: auto; }
+.gt-nomes { flex: none; width: 250px; border-right: 1px solid var(--border); background: var(--surface); }
+.gt-tempo { flex: 1; min-width: 0; overflow-x: auto; }
+.gt-canvas { position: relative; }
+.gt-eixo { display: flex; height: 30px; border-bottom: 1px solid var(--border); }
+.gt-eixo div {
+  flex: none; font-size: 10.5px; color: var(--sutil); padding: 8px 0 0 5px;
+  border-left: 1px solid var(--border); white-space: nowrap;
+}
+.gt-espaco { height: 30px; border-bottom: 1px solid var(--border); }
+.gt-nome {
+  height: 32px; display: flex; align-items: center; padding: 0 12px;
+  border-bottom: 1px solid var(--border); font-size: 12.5px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
+}
+.gt-nome:hover { background: var(--bg); }
+.gt-faixa { height: 32px; position: relative; border-bottom: 1px solid var(--border); }
+.gt-nomes > :last-child, .gt-corpo > :last-child { border-bottom: 0; }
+.gt-corpo { position: relative; }
+.gt-grade { position: absolute; inset: 0; pointer-events: none; }
+.gt-hoje { position: absolute; top: 30px; bottom: 0; width: 2px; background: var(--bad); z-index: 2; }
+.gt-hoje b {
+  position: absolute; top: -22px; left: -16px; font-size: 10px; color: #fff;
+  background: var(--bad); padding: 1px 5px; border-radius: 4px; font-weight: 600;
+}
+.gt-bar { position: absolute; top: 8px; height: 16px; border-radius: 5px; display: flex; overflow: hidden; }
+/* Dois segmentos: o tempo esperando e o tempo em execução. Sem isso o Gantt mostraria
+   4 dos 20 ativos — `data_inicio` só é carimbada ao entrar em In progress. */
+.gt-espera { background: repeating-linear-gradient(135deg, #e5e7eb 0 5px, #f3f4f6 5px 10px); }
+.gt-exec-in-progress { background: var(--s-in-progress); }
+.gt-exec-delegado    { background: var(--s-delegado); }
+.gt-exec-not-started { background: var(--s-not-started); }
+.gt-exec-sem-status  { background: var(--s-sem); }
+.gt-bar.atrasada { box-shadow: 0 0 0 2px var(--bad); }
+.gt-legenda { display: flex; gap: 14px; align-items: center; font-size: 11.5px; color: var(--muted); }
+.gt-legenda i { width: 14px; height: 9px; border-radius: 3px; display: inline-block; vertical-align: -1px; margin-right: 5px; }
+/* Dois grupos de naturezas diferentes, separados por uma barra vertical: o primeiro filtra,
+   o segundo só explica a cor. Misturá-los é o que fazia "clicar em esperando" não querer
+   dizer nada. Ver `04`. */
+.gt-legenda .grupo { display: flex; gap: 12px; align-items: center; }
+.gt-legenda .grupo + .grupo { padding-left: 14px; border-left: 1px solid var(--border); }
+.gt-legenda button {
+  font: inherit; color: inherit; background: none; border: 0; padding: 2px 4px;
+  border-radius: 5px; cursor: pointer; display: flex; align-items: center;
+}
+.gt-legenda button:hover { background: var(--bg); }
+.gt-legenda button.off { opacity: .38; text-decoration: line-through; }
+/* A régua é a área de arraste. O cursor diz isso antes do title. */
+.gt-eixo { cursor: ew-resize; user-select: none; }
+.gt-selecao {
+  position: absolute; top: 0; height: 30px; z-index: 3; pointer-events: none;
+  background: var(--primary-soft); border-left: 1px solid var(--primary);
+  border-right: 1px solid var(--primary);
+}
+.gt-recorte {
+  display: inline-flex; align-items: center; gap: 8px; font-size: 11.5px;
+  color: var(--primary-dark); background: var(--primary-soft);
+  padding: 3px 9px; border-radius: 20px; font-weight: 500;
+}
+.gt-recorte button {
+  font: inherit; font-weight: 600; color: inherit; background: none;
+  border: 0; padding: 0; cursor: pointer; text-decoration: underline;
+}
+
+/* ============================ ANOTAÇÕES ================================== */
+.pessoas-lista {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+}
+.pessoa-linha {
+  display: grid; grid-template-columns: 190px 96px 1fr 116px; gap: 14px;
+  align-items: center; padding: 11px 15px; border-bottom: 1px solid var(--border);
+}
+/* Resumos usa a mesma linha com quatro células. A coluna do total é só de Anotações —
+   sem o modificador, o botão "Ler" cairia na coluna estreita do número. */
+.pessoa-linha.com-total { grid-template-columns: 190px 96px 1fr 64px 116px; }
+/* O total ganha coluna própria porque era a única informação da linha que exigia somar
+   de cabeça. Mesmo vocabulário dos cartões do topo: número grande, rótulo pequeno. */
+.total-notas { text-align: right; font-variant-numeric: tabular-nums; }
+.total-notas b { font-size: 17px; font-weight: 650; display: block; line-height: 1.1; }
+.total-notas span { font-size: 10.5px; color: var(--sutil); }
+.total-notas.vazio-total b { color: var(--sutil); font-weight: 500; }
+.pessoa-linha:last-child { border-bottom: 0; }
+.pessoa-nome { font-weight: 550; }
+.pessoa-nivel { font-size: 11px; color: var(--muted); }
+.silencio { font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.silencio.frio { color: var(--ok); }
+.silencio.morno { color: var(--warn); }
+.silencio.quente, .silencio.nunca { color: var(--bad); }
+.barra { display: flex; height: 8px; border-radius: 20px; overflow: hidden; background: var(--bg); }
+.barra span { display: block; }
+.barra .b-pos { background: var(--ok); }
+.barra .b-mel { background: var(--warn); }
+.contagens { font-size: 12px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+/* O que o filtro de inativos tirou da vista, dito em voz baixa mas dito. Mesmo princípio
+   do cabeçalho da coluna Done: esconder em silêncio é como a tela perde a confiança. */
+.ocultos { font-weight: 400; color: var(--sutil); text-transform: none; letter-spacing: 0; }
+.c-pos { color: var(--ok); font-weight: 600; }
+.c-mel { color: var(--warn); font-weight: 600; }
+
+.filtros { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.filtros select {
+  padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); outline: none;
+}
+.filtros select:focus { border-color: var(--primary); }
+.chip {
+  border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+  padding: 5px 11px; border-radius: 20px; cursor: pointer; font-size: 12.5px; font-weight: 550;
+  transition: all .12s;
+}
+.chip:hover { border-color: var(--border-forte); color: var(--text); }
+.chip.ativo { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-dark); }
+
+.notas { display: flex; flex-direction: column; gap: 9px; }
+.nota {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 12px 15px; box-shadow: var(--shadow);
+}
+.nota-cab { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.nota-pessoa { font-weight: 600; font-size: 13px; }
+.nota-data { font-size: 11.5px; color: var(--sutil); margin-left: auto; font-variant-numeric: tabular-nums; }
+.t-positivo { background: var(--p-baixa-bg); color: var(--p-baixa); }
+.t-melhoria { background: var(--p-media-bg); color: var(--p-media); }
+.nota-texto { word-break: break-word; }
+.nota-contexto {
+  margin-top: 6px; font-size: 12.5px; color: var(--muted);
+  border-left: 2px solid var(--border); padding-left: 9px; word-break: break-word;
+}
+.valores { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+.valor {
+  font-size: 10.5px; font-weight: 600; padding: 1.5px 7px; border-radius: 5px;
+  background: var(--primary-soft); color: var(--primary-dark);
+}
+
+/* ============================ LEITURA ==================================== */
+/* O compilado é prosa longa e densa, lida antes de entrar numa conversa. Ele merece a
+   tela inteira e nada em volta — mas com a linha curta, porque texto corrido de ponta a
+   ponta do monitor é ilegível. Superfície cheia, medida confortável. */
+.leitura {
+  display: none; position: fixed; inset: 0; z-index: 60;
+  background: var(--surface); overflow-y: auto;
+}
+.leitura.aberto { display: block; }
+.leitura-topo {
+  position: sticky; top: 0; background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px; padding: 12px 22px; z-index: 1;
+}
+.leitura-quem { font-weight: 650; }
+.leitura-data { color: var(--sutil); font-size: 13px; font-variant-numeric: tabular-nums; }
+.leitura-corpo {
+  max-width: 68ch; margin: 0 auto; padding: 40px 24px 80px;
+  font-size: 16px; line-height: 1.7; white-space: pre-wrap; word-break: break-word;
+}
+
+/* ============================ MODAL ====================================== */
+.overlay {
+  display: none; position: fixed; inset: 0; z-index: 50;
+  background: rgba(17,24,39,.42); padding: 24px; overflow-y: auto;
+}
+.overlay.aberto { display: flex; align-items: flex-start; justify-content: center; }
+.modal {
+  background: var(--surface); border-radius: 14px; box-shadow: 0 20px 50px rgba(16,24,40,.22);
+  width: 100%; max-width: 560px; margin: auto;
+}
+.modal.estreito { max-width: 380px; }
+.modal-cab { display: flex; align-items: center; padding: 15px 18px; border-bottom: 1px solid var(--border); }
+.modal-cab h2 { margin: 0; font-size: 15px; font-weight: 650; }
+.fechar {
+  margin-left: auto; border: 0; background: transparent; color: var(--muted);
+  font-size: 21px; line-height: 1; cursor: pointer; padding: 0 5px; border-radius: 6px;
+}
+.fechar:hover { background: var(--bg); color: var(--text); }
+.modal-corpo { padding: 18px; display: flex; flex-direction: column; gap: 13px; }
+.modal-pe {
+  display: flex; align-items: center; gap: 9px; padding: 13px 18px;
+  border-top: 1px solid var(--border); background: var(--bg); border-radius: 0 0 14px 14px;
+}
+.carimbos { font-size: 11.5px; color: var(--sutil); flex: 1; line-height: 1.35; }
+
+.campo { display: flex; flex-direction: column; gap: 5px; }
+.campo label { font-size: 12px; font-weight: 600; color: var(--muted); }
+.campo input, .campo select, .campo textarea {
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); outline: none; transition: border-color .12s;
+}
+.campo input:focus, .campo select:focus, .campo textarea:focus { border-color: var(--primary); }
+.campo textarea { min-height: 72px; resize: vertical; }
+.dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+.secao-form {
+  font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--sutil); margin: 4px 0 -4px; padding-top: 8px; border-top: 1px solid var(--border);
+}
+.check { display: flex; align-items: center; gap: 8px; }
+.check label { font-size: 13px; font-weight: 500; color: var(--text); }
+.pessoas { display: flex; flex-wrap: wrap; gap: 5px; }
+.pessoas label {
+  display: flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 500;
+  border: 1px solid var(--border); padding: 4px 9px; border-radius: 20px; cursor: pointer;
+  transition: all .12s;
+}
+.pessoas label:has(input:checked) {
+  background: var(--primary-soft); border-color: var(--primary); color: var(--primary-dark);
+}
+.pessoas .vazio { color: var(--sutil); font-size: 12.5px; }
+/* Inativo só aparece no seletor quando já está no card — desenhado como resíduo, para
+   ninguém achar que é uma opção nova. */
+.pessoas label.inativa { border-style: dashed; color: var(--muted); }
+.pessoas label.inativa em { font-style: normal; font-size: 10.5px; color: var(--sutil); }
+.erro-form {
+  background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
+  padding: 9px 12px; border-radius: 8px; font-size: 13px;
+}
+
+@media (max-width: 860px) {
+  .app { flex-direction: column; }
+  .lateral { width: auto; height: auto; position: static; flex-direction: row; align-items: center;
+             border-right: 0; border-bottom: 1px solid var(--border); overflow-x: auto; }
+  .menu { flex-direction: row; padding: 8px; }
+  .lateral-pe { margin: 0 0 0 auto; flex-direction: row; padding: 8px; }
+  .recolher { display: none; }
+  .busca input { width: 100%; }
+  .coluna { max-width: none; }
+  .pessoa-linha { grid-template-columns: 1fr 80px; grid-row-gap: 7px; }
+  .dupla { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <aside class="lateral">
+    <div class="lateral-topo">
+      <span class="marca-ponto"></span>
+      <span class="marca-nome">Gestão</span>
+      <button class="recolher" id="btnRecolher" onclick="alternarLateral()"
+              title="Recolher menu">&#9664;</button>
+    </div>
+
+    <nav class="menu">
+      <button class="menu-item ativa" id="menu-hoje" onclick="irPara('hoje')">
+        <span class="menu-ico">&#9788;</span><span>Hoje</span><span id="sinoHoje"></span></button>
+      <button class="menu-item" id="menu-board" onclick="irPara('board')">
+        <span class="menu-ico">&#9776;</span><span>Board</span></button>
+      <button class="menu-item" id="menu-dashboard" onclick="irPara('dashboard')">
+        <span class="menu-ico">&#9638;</span><span>Dashboard</span></button>
+      <button class="menu-item" id="menu-anotacoes" onclick="irPara('anotacoes')">
+        <span class="menu-ico">&#9998;</span><span>Anotações</span></button>
+      <button class="menu-item" id="menu-resumos" onclick="irPara('resumos')">
+        <span class="menu-ico">&#9993;</span><span>Resumos</span></button>
+    </nav>
+
+    <div class="lateral-pe">
+      <button class="btn" id="btnSincronizar" onclick="sincronizar()" title="Sincronizar">
+        <span>Sincronizar</span></button>
+      <button class="btn" id="btnRecarregar" onclick="recarregarTudo()" title="Recarregar">
+        <span>Recarregar</span></button>
+    </div>
+  </aside>
+
+  <main class="principal">
+    <header class="topo">
+      <h1 id="tituloVisao">Hoje</h1>
+      <span class="sub" id="subVisao"></span>
+      <span class="espaco"></span>
+
+      <div class="busca" id="caixaBusca" style="display:none">
+        <span class="lupa">&#9906;</span>
+        <input type="text" id="busca" placeholder="Buscar título…  (/)" autocomplete="off" oninput="aoBuscar()">
+        <button class="limpar" onclick="limparBusca()" title="Limpar">&times;</button>
+      </div>
+
+      <button class="btn btn-primario" onclick="abrirModal()">Novo card</button>
+    </header>
+
+    <!-- Separado do #aviso porque o carregar() limpa aquele; o resultado da sincronia
+         precisa sobreviver ao recarregamento que vem logo depois dela. -->
+    <div class="faixa" id="avisoSync"></div>
+    <div class="faixa" id="aviso"></div>
+    <div id="conteudo"><p class="carregando">Carregando…</p></div>
+  </main>
+</div>
+
+<!-- =============== LEITURA DO RESUMO, em tela cheia =============== -->
+<div class="leitura" id="leitura">
+  <div class="leitura-topo">
+    <span class="leitura-quem" id="leituraQuem"></span>
+    <span class="leitura-data" id="leituraData"></span>
+    <span class="espaco"></span>
+    <a class="btn" id="leituraLink" href="#" target="_blank" rel="noopener">Abrir no Drive</a>
+    <button class="btn" onclick="fecharResumo()">Fechar</button>
+  </div>
+  <div class="leitura-corpo" id="leituraTexto"></div>
+</div>
+
+<!-- ===================== MODAL DE CARD ===================== -->
+<div class="overlay" id="overlay" onclick="cliqueForaFecha(event)">
+  <div class="modal">
+    <div class="modal-cab">
+      <h2 id="tituloModal">Novo card</h2>
+      <button class="fechar" onclick="fecharModal()" title="Fechar">&times;</button>
+    </div>
+
+    <form id="formCard" onsubmit="salvar(event)">
+      <div class="modal-corpo">
+        <div id="erroForm"></div>
+
+        <div class="campo">
+          <label for="f-titulo">Título *</label>
+          <input type="text" id="f-titulo" required autocomplete="off">
+        </div>
+
+        <div class="dupla">
+          <div class="campo">
+            <label for="f-status">Status</label>
+            <select id="f-status"></select>
+          </div>
+          <div class="campo">
+            <label for="f-prioridade">Prioridade</label>
+            <select id="f-prioridade"></select>
+          </div>
+        </div>
+
+        <div class="dupla">
+          <div class="campo">
+            <label for="f-prazo">Prazo</label>
+            <input type="date" id="f-prazo">
+          </div>
+          <div class="campo">
+            <label>Delegado para</label>
+            <!-- Checkboxes e não select multiple: com 7 pessoas cabe todo mundo na tela,
+                 e ninguém precisa descobrir sozinho que é Ctrl+clique. -->
+            <div class="pessoas" id="f-delegado_para"></div>
+          </div>
+        </div>
+
+        <div class="campo">
+          <label for="f-descricao">Descrição</label>
+          <textarea id="f-descricao"></textarea>
+        </div>
+
+        <p class="secao-form">Cliente</p>
+
+        <div class="check">
+          <input type="checkbox" id="f-aguardando_cliente">
+          <label for="f-aguardando_cliente">Aguardando cliente</label>
+        </div>
+
+        <div class="dupla">
+          <div class="campo">
+            <label for="f-prazo_cliente">Prazo do cliente</label>
+            <input type="date" id="f-prazo_cliente">
+          </div>
+          <div class="campo">
+            <label for="f-pendencia_cliente">Pendência</label>
+            <input type="text" id="f-pendencia_cliente" autocomplete="off">
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-pe">
+        <span class="carimbos" id="carimbos"></span>
+        <button type="button" class="btn" onclick="fecharModal()">Cancelar</button>
+        <button type="submit" class="btn btn-primario" id="btnSalvar">Criar card</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ SELETOR DE DELEGADO, ao soltar em "Delegado" ============ -->
+<div class="overlay" id="overlayDelegar" onclick="cliqueForaCancela(event)">
+  <div class="modal estreito">
+    <div class="modal-cab">
+      <h2>Delegar para quem?</h2>
+      <button class="fechar" onclick="cancelarDelegacao()" title="Cancelar">&times;</button>
+    </div>
+    <div class="modal-corpo">
+      <p style="margin:0;color:var(--muted);font-size:13px" id="textoDelegar"></p>
+      <div class="pessoas" id="d-pessoas"></div>
+      <div id="erroDelegar"></div>
+    </div>
+    <div class="modal-pe">
+      <span class="espaco"></span>
+      <button type="button" class="btn" onclick="cancelarDelegacao()">Cancelar</button>
+      <button type="button" class="btn btn-primario" onclick="confirmarDelegacao()">Delegar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Injetado pelo servidor: as colunas do board são exatamente STATUS_OPCOES, a mesma
+   constante que alimenta o dropdown da aba. Uma lista só, um lugar só. */
+var STATUS_COLUNAS = <?!= JSON.stringify(STATUS_OPCOES) ?>;
+var PRIORIDADES = <?!= JSON.stringify(PRIORIDADE_OPCOES) ?>;
+var STATUS_PADRAO_UI = <?!= JSON.stringify(STATUS_PADRAO) ?>;
+
+var SEM_STATUS = 'Sem status';
+var STATUS_DELEGADO = 'Delegado';
+var STATUS_DONE = 'Done';
+
+var CLASSE_STATUS = {
+  'Not started': 'not-started', 'In progress': 'in-progress',
+  'Done': 'done', 'Delegado': 'delegado'
+};
+
+/* Mapa em vez de derivar a classe do texto — "Média" tem acento e vira classe inválida. */
+var CLASSE_PRIORIDADE = { 'Alta': 'p-alta', 'Média': 'p-media', 'Baixa': 'p-baixa' };
+
+/* Coluna booleana → rótulo EMPRESA. Espelha VALORES_EMPRESA do servidor ao contrário: lá a
+   ingestão traduz rótulo→coluna, aqui a leitura traduz coluna→rótulo. */
+var VALORES = [
+  { campo: 'valor_autogestao',    rotulo: 'Autogestão' },
+  { campo: 'valor_colaboracao',   rotulo: 'Colaboração' },
+  { campo: 'valor_qualidade',     rotulo: 'Qualidade' },
+  { campo: 'valor_transparencia', rotulo: 'Transparência' }
+];
+
+var TITULOS = {
+  hoje: 'Hoje', board: 'Board', dashboard: 'Dashboard',
+  anotacoes: 'Anotações', resumos: 'Resumos'
+};
+
+var DIAS_RECORTE_DONE = 30;
+var DIAS_CONFERIR_DELEGADO = 7;
+var DIAS_CICLO_1A1 = 21;   // e não mês-calendário, para não quebrar na virada do mês
+var MS_DIA = 86400000;
+
+var MESES = ['janeiro','fevereiro','março','abril','maio','junho',
+             'julho','agosto','setembro','outubro','novembro','dezembro'];
+
+/* --------------------------------- estado -------------------------------- */
+var visao = 'hoje';
+var cards = [];
+var cardsPorId = {};
+var ignoradas = 0;
+
+/* `pessoas` é a lista completa e é o que traduz id→nome em toda parte — card delegado a
+   quem saiu precisa mostrar o nome, e anotação antiga também. `pessoasAtivas` é o recorte
+   que as telas de atenção usam. Os dois derivam da mesma carga; a regra mora aqui e em
+   nenhum outro lugar. Ver `04`. */
+var pessoas = [];
+var pessoasAtivas = [];
+var pessoasPorId = {};
+
+var anotacoes = null;          // null = ainda não carregou
+var erroAnotacoes = '';
+
+var resumos = null;            // { pessoas, orfas, inativos } — null = ainda não carregou
+var erroResumos = '';
+var resumoAberto = null;       // { id, titulo, texto, url } do que está na tela
+var resumoQuem = '';           // nome da pessoa, que o Doc não carrega — só a data
+var carregandoResumo = '';     // id em trânsito, para o botão dizer que está buscando
+
+/* Recorte do Gantt. Vive no módulo, e não dentro do htmlGantt, porque `desenhar()` refaz o
+   HTML inteiro a cada mudança de estado — recorte perdido a cada clique não seria filtro.
+   Sobrevive à navegação de propósito: voltar ao Dashboard e reencontrar a janela irrita
+   menos que reencontrar tudo. */
+var gtZoom = null;              // { inicio, fim } em ms, ou null = janela inteira
+var gtArrasto = null;           // { ancora, atual } durante o arraste na régua
+var gtStatusOcultos = {};       // classe de status → true quando escondido
+
+var termoBusca = '';
+var doneColapsada = true;      // decisão do `04`: histórico não abre sozinho
+var doneRecente = true;        // e, quando abre, abre recortada
+
+var filtroPessoa = '', filtroTipo = '', filtroValor = '';
+
+var idEmEdicao = null;         // null = criando; com id = editando aquele card
+var arrastando = null;
+var delegacaoPendente = null;
+
+/* ==========================================================================
+   NAVEGAÇÃO
+   --------------------------------------------------------------------------
+   Estado do cliente, sem parâmetro de URL: `?view=` pertence aos painéis das rotinas
+   (ver `02`), e reusar o nome colidiria dois namespaces na mesma query string.
+   ========================================================================== */
+function irPara(destino) {
+  visao = destino;
+
+  Object.keys(TITULOS).forEach(function (v) {
+    document.getElementById('menu-' + v).classList.toggle('ativa', v === destino);
+  });
+  document.getElementById('tituloVisao').textContent = TITULOS[destino];
+  document.getElementById('caixaBusca').style.display = destino === 'board' ? '' : 'none';
+
+  /* Anotações alimenta a fila de 1:1 do Hoje? Não — quem alimenta é `data_ultimo_1a1`,
+     que vem de Pessoas. As anotações só são buscadas quando a aba delas abre. */
+  if (destino === 'anotacoes' && anotacoes === null) return carregarAnotacoes();
+  if (destino === 'resumos' && resumos === null) return carregarResumos();
+  desenhar();
+}
+
+function alternarLateral() {
+  var compacta = document.getElementById('app').classList.toggle('compacta');
+  var btn = document.getElementById('btnRecolher');
+  btn.innerHTML = compacta ? '&#9654;' : '&#9664;';
+  btn.title = compacta ? 'Expandir menu' : 'Recolher menu';
+}
+
+function desenhar() {
+  var alvo = document.getElementById('conteudo');
+  if (visao === 'board') { alvo.innerHTML = htmlBoard(); ligarArrasto(); }
+  else if (visao === 'hoje') alvo.innerHTML = htmlHoje();
+  else if (visao === 'dashboard') { alvo.innerHTML = htmlDashboard(); ligarGantt(); }
+  else if (visao === 'resumos') alvo.innerHTML = htmlResumos();
+  else alvo.innerHTML = htmlAnotacoes();
+
+  atualizarSub();
+  atualizarSino();
+}
+
+function atualizarSub() {
+  var sub = '';
+  if (visao === 'board') sub = cards.length + (cards.length === 1 ? ' card' : ' cards');
+  else if (visao === 'dashboard') sub = ativos().length + ' ativos';
+  else if (visao === 'anotacoes' && anotacoes) sub = anotacoes.length + ' anotações';
+  document.getElementById('subVisao').textContent = sub;
+}
+
+/* O sino do menu conta o que está vencido: é a única coisa que justifica interromper. */
+function atualizarSino() {
+  var n = vencidos().length;
+  document.getElementById('sinoHoje').outerHTML = n
+    ? '<span class="menu-sino" id="sinoHoje">' + n + '</span>'
+    : '<span id="sinoHoje"></span>';
+}
+
+/* ==========================================================================
+   CARGA
+   ========================================================================== */
+function recarregarTudo() {
+  carregar();
+  if (anotacoes !== null) carregarAnotacoesEmSilencio();
+}
+
+function carregar() {
+  document.getElementById('btnRecarregar').disabled = true;
+  document.getElementById('aviso').innerHTML = '';
+
+  google.script.run
+    .withSuccessHandler(aoCarregar)
+    .withFailureHandler(mostrarErro)
+    .listCards();
+}
+
+function aoCarregar(resposta) {
+  document.getElementById('btnRecarregar').disabled = false;
+
+  cards = resposta.cards || [];
+  ignoradas = resposta.ignoradas || 0;
+
+  cardsPorId = {};
+  cards.forEach(function (card) { cardsPorId[card.id] = card; });
+
+  if (ignoradas > 0) {
+    document.getElementById('aviso').innerHTML =
+      '<div class="aviso">' + ignoradas + ' linha(s) da aba com conteúdo mas sem ' +
+      '<b>id</b> foram ignoradas. Cards sem id não podem ser editados — provavelmente ' +
+      'foram digitados direto na planilha em vez de criados pela camada de acesso.</div>';
+  }
+
+  if (visao !== 'anotacoes') desenhar();
+  else atualizarSino();
+}
+
+function carregarAnotacoes() {
+  document.getElementById('conteudo').innerHTML = '<p class="carregando">Carregando anotações…</p>';
+
+  google.script.run
+    .withSuccessHandler(function (lista) { anotacoes = lista || []; erroAnotacoes = ''; desenhar(); })
+    .withFailureHandler(function (err) { anotacoes = []; erroAnotacoes = mensagem(err); desenhar(); })
+    .listAnotacoes();
+}
+
+function carregarResumos() {
+  document.getElementById('conteudo').innerHTML = '<p class="carregando">Carregando resumos…</p>';
+
+  google.script.run
+    .withSuccessHandler(function (r) { resumos = r; erroResumos = ''; desenhar(); })
+    .withFailureHandler(function (err) { resumos = null; erroResumos = mensagem(err); desenhar(); })
+    .listResumos();
+}
+
+function carregarAnotacoesEmSilencio() {
+  google.script.run
+    .withSuccessHandler(function (lista) {
+      anotacoes = lista || [];
+      if (visao === 'anotacoes') desenhar();
+    })
+    .withFailureHandler(function () { /* a aba avisa quando for aberta */ })
+    .listAnotacoes();
+}
+
+function mostrarErro(err) {
+  document.getElementById('btnRecarregar').disabled = false;
+  document.getElementById('conteudo').innerHTML =
+    '<div class="faixa"><div class="erro"><b>Não foi possível carregar os cards.</b>' +
+    'A chamada listCards() falhou no servidor.' +
+    '<code>' + esc(mensagem(err)) + '</code></div></div>';
+}
+
+/* ==========================================================================
+   RECORTES — as regras de negócio da leitura, num lugar só
+   ========================================================================== */
+function ativos() {
+  return cards.filter(function (c) { return c.status !== STATUS_DONE; });
+}
+
+/**
+ * O que ele executa: ativo e **não travado no cliente**.
+ *
+ * Card com `aguardando_cliente` sai da fila do dia mesmo com prazo em cima — a bola está
+ * do outro lado, e mandar "faça isto" para algo que ele não pode fazer é ruído. Ele
+ * aparece uma vez só, no bloco de cliente. Sem esta exclusão o mesmo card saía nos dois
+ * lugares, que era metade da confusão da tela.
+ */
+function executaveis() {
+  return ativos().filter(function (c) { return c.aguardando_cliente !== true; });
+}
+
+/* Vencido nunca inclui Done: card concluído com prazo passado não é atraso, é história. */
+function vencidos() {
+  var hoje = hojeIso();
+  return executaveis().filter(function (c) { return c.prazo && c.prazo < hoje; });
+}
+
+function vencemEm(iso) {
+  return executaveis().filter(function (c) { return c.prazo === iso; });
+}
+
+/* Delegado parado: o relógio é `data_delegacao`, carimbada a cada entrada em Delegado. */
+function delegadosAConferir(jaListados) {
+  var limite = isoMenosDias(DIAS_CONFERIR_DELEGADO);
+  var hoje = hojeIso();
+
+  return cards.filter(function (c) {
+    if (c.status !== STATUS_DELEGADO || !c.data_delegacao) return false;
+    if (c.data_delegacao > limite) return false;
+    return jaListados.indexOf(c.id) < 0;   // já apareceu por prazo — não repete
+  }).map(function (c) {
+    return { card: c, dias: diasEntre(c.data_delegacao, hoje) };
+  }).sort(function (a, b) { return b.dias - a.dias; });
+}
+
+function aguardandoCliente() {
+  return ativos().filter(function (c) { return c.aguardando_cliente === true; });
+}
+
+/* ==========================================================================
+   HOJE — a tela principal
+   --------------------------------------------------------------------------
+   Reinterpreta o painel do Notion, que era uma lista vertical porque vivia num embed
+   estreito. Aqui é calculada ao vivo da planilha: sempre fresca, sem depender de
+   rotina agendada. O que ela não faz é julgar — "o que travou e por quê" continua
+   sendo prosa da rotina-semanal.
+   ========================================================================== */
+function htmlHoje() {
+  var hoje = hojeIso();
+  var d = new Date();
+
+  var listaVencidos = vencidos();
+  var listaHoje = vencemEm(hoje);
+  var listaAmanha = vencemEm(isoMaisDias(1));
+
+  var jaListados = listaVencidos.concat(listaHoje, listaAmanha).map(function (c) { return c.id; });
+
+  return '<div class="pagina hoje">' +
+    '<div class="hoje-cab">' +
+      '<div class="dia">' + d.getDate() + ' de ' + MESES[d.getMonth()] + ' de ' + d.getFullYear() + '</div>' +
+      veredito(listaVencidos, listaHoje, listaAmanha) +
+    '</div>' +
+
+    bloco('Vencido', 'b-vencido', listaVencidos, 'Nada vencido.') +
+    bloco('Vence hoje', 'b-hoje', listaHoje, 'Nada vencendo hoje.') +
+    bloco('Amanhã', 'b-amanha', listaAmanha, 'Nada para amanhã.') +
+
+    '<div class="secao"><p class="secao-titulo">De olho</p>' +
+      '<div class="de-olho">' +
+        olhoDelegados(delegadosAConferir(jaListados)) +
+        olhoCliente(aguardandoCliente()) +
+        olho1a1() +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+/**
+ * A frase que responde "por onde começo", antes de qualquer lista.
+ *
+ * É o que a tela existe para dar. Uma contagem no canto — que era o que havia antes —
+ * obriga quem lê a somar e concluir sozinho; a frase já conclui.
+ */
+function veredito(vencidos, hoje, amanha) {
+  if (vencidos.length) {
+    var maisAntigo = vencidos.slice().sort(function (a, b) {
+      return a.prazo.localeCompare(b.prazo);
+    })[0];
+    var dias = diasEntre(maisAntigo.prazo, hojeIso());
+
+    return '<p class="veredito urgente">Comece pelos ' + vencidos.length + ' vencidos.</p>' +
+      '<div class="veredito-obs">O mais antigo é “' + esc(maisAntigo.titulo) + '”, ' +
+      (dias === 1 ? 'de ontem' : 'parado há ' + dias + ' dias') + '.' +
+      (hoje.length ? ' Ainda vencem ' + hoje.length + ' hoje.' : '') + '</div>';
+  }
+
+  if (hoje.length) {
+    return '<p class="veredito">' + hoje.length +
+      (hoje.length === 1 ? ' card vence hoje.' : ' cards vencem hoje.') + '</p>' +
+      '<div class="veredito-obs">Nada atrasado' +
+      (amanha.length ? ' — e ' + amanha.length + ' vence amanhã.' : '.') + '</div>';
+  }
+
+  if (amanha.length) {
+    return '<p class="veredito calmo">Nada vence hoje.</p>' +
+      '<div class="veredito-obs">' + amanha.length +
+      (amanha.length === 1 ? ' card vence amanhã' : ' cards vencem amanhã') +
+      ' — dá para adiantar.</div>';
+  }
+
+  /* Dia sem prazo é resposta válida, e forçar urgência em dia calmo é como este tipo de
+     tela perde a confiança de quem a abre. */
+  var proximo = executaveis()
+    .filter(function (c) { return c.prazo; })
+    .sort(function (a, b) { return a.prazo.localeCompare(b.prazo); })[0];
+
+  return '<p class="veredito calmo">Nada vence hoje nem amanhã.</p>' +
+    '<div class="veredito-obs">' + (proximo
+      ? 'O próximo prazo é ' + fmtData(proximo.prazo) + ' (“' + esc(proximo.titulo) + '”). ' +
+        'Dia de puxar do que importa, não do que urge.'
+      : 'Nenhum card ativo tem prazo.') + '</div>';
+}
+
+function bloco(titulo, classe, lista, vazio) {
+  /* Prazo é o eixo — ele define em qual bloco o card cai. Dentro do bloco, prioridade é
+     o desempate, e o prazo volta como critério secundário para o vencido mais antigo
+     não ficar atrás de um de ontem só por ser Média. */
+  var ordenada = lista.slice().sort(function (a, b) {
+    var d = ordemPrioridade(a) - ordemPrioridade(b);
+    return d !== 0 ? d : String(a.prazo || '').localeCompare(String(b.prazo || ''));
+  });
+
+  var corpo = ordenada.length
+    ? '<div class="painel"><div class="linhas">' + ordenada.map(htmlLinha).join('') + '</div></div>'
+    : '<p class="vazio-msg">' + esc(vazio) + '</p>';
+
+  return '<div class="bloco ' + classe + '">' +
+    '<p class="bloco-cab">' + esc(titulo) +
+      (ordenada.length ? '<span class="n">' + ordenada.length + '</span>' : '') +
+    '</p>' + corpo +
+  '</div>';
+}
+
+/* Ordem dentro do bloco: Alta antes de Média antes de Baixa. Prazo é o eixo, prioridade
+   é o desempate — a mesma regra que o o-que-tenho-hoje usa. */
+function ordemPrioridade(card) {
+  var ordem = { 'Alta': 0, 'Média': 1, 'Baixa': 2 };
+  return card.prioridade in ordem ? ordem[card.prioridade] : 3;
+}
+
+function htmlLinha(card) {
+  var nomes = nomesDeIds(card.delegado_para);
+
+  /* Quanto tempo faz, e não só "está vencido": entre um card de ontem e um de treze
+     dias atrás a diferença muda o que se faz primeiro, e a seção sozinha não a mostra. */
+  var atraso = '';
+  if (card.prazo && card.prazo < hojeIso()) {
+    var dias = diasEntre(card.prazo, hojeIso());
+    atraso = '<span class="dias-fora">' + (dias === 1 ? 'ontem' : 'há ' + dias + 'd') + '</span>';
+  }
+
+  return '<div class="linha" data-id="' + esc(card.id) + '" onclick="abrirEdicao(this.dataset.id)">' +
+    '<span class="status st-' + (CLASSE_STATUS[card.status] || 'sem-status') + '">' +
+      esc(card.status || 'Sem status') + '</span>' +
+    '<span class="txt">' + esc(card.titulo || '(sem título)') + '</span>' +
+    (card.status === STATUS_DELEGADO && nomes ? '<span class="chip-pessoa">' + esc(nomes) + '</span>' : '') +
+    atraso +
+    (card.prioridade
+      ? '<span class="badge ' + (CLASSE_PRIORIDADE[card.prioridade] || 'p-baixa') + '">' +
+        esc(card.prioridade) + '</span>'
+      : '') +
+  '</div>';
+}
+
+/* ------------------------------- de olho ---------------------------------- */
+function olho(titulo, contador, corpo) {
+  return '<div class="olho"><h3>' + esc(titulo) +
+    (contador ? '<span class="secao-num">' + contador + '</span>' : '') +
+    '</h3>' + corpo + '</div>';
+}
+
+function itemOlho(card, direita) {
+  return '<div class="olho-item" data-id="' + esc(card.id) + '" onclick="abrirEdicao(this.dataset.id)">' +
+    '<span class="olho-txt">' + esc(card.titulo || '(sem título)') + '</span>' + direita + '</div>';
+}
+
+function olhoDelegados(lista) {
+  if (!lista.length) {
+    return olho('Conferir delegados', 0,
+      '<p class="vazio-msg">Ninguém parado há mais de ' + DIAS_CONFERIR_DELEGADO + ' dias.</p>');
+  }
+
+  return olho('Conferir delegados', lista.length, lista.map(function (item) {
+    var nomes = nomesDeIds(item.card.delegado_para);
+    return itemOlho(item.card,
+      (nomes ? '<span class="chip-pessoa">' + esc(nomes) + '</span>' : '') +
+      '<span class="dias-fora">há ' + item.dias + 'd</span>');
+  }).join(''));
+}
+
+function olhoCliente(lista) {
+  if (!lista.length) {
+    return olho('Bola com o cliente', 0, '<p class="vazio-msg">Nada esperando o cliente.</p>');
+  }
+
+  /* Ordenado pelo prazo do cliente, do mais atrasado ao mais distante: é a ordem em que
+     ele cobra numa call. Sem data combinada vai para o fim, sinalizado. */
+  var ordenada = lista.slice().sort(function (a, b) {
+    if (!a.prazo_cliente) return 1;
+    if (!b.prazo_cliente) return -1;
+    return a.prazo_cliente.localeCompare(b.prazo_cliente);
+  });
+
+  return olho('Bola com o cliente', lista.length, ordenada.map(function (card) {
+    if (!card.prazo_cliente) return itemOlho(card, '<span class="chip-pessoa">sem data</span>');
+
+    var atrasado = card.prazo_cliente < hojeIso();
+    return itemOlho(card, atrasado
+      ? '<span class="dias-fora">há ' + diasEntre(card.prazo_cliente, hojeIso()) + 'd</span>'
+      : '<span class="chip-pessoa">' + fmtData(card.prazo_cliente) + '</span>');
+  }).join(''));
+}
+
+/**
+ * A fila de 1:1 do mês, pela mesma regra da compilador-1a1-rotina.
+ *
+ * Um 1:1 por pessoa por mês, montados na reta final: a janela são os últimos N dias
+ * úteis do mês, onde N é o tamanho do time. Fora da janela, o bloco não aparece.
+ *
+ * **N é o time ativo.** Quem saiu não entra no ciclo, e a janela encurta junto — contar
+ * gente que não vai ter 1:1 abriria a janela cedo demais e deslocaria todo mundo.
+ */
+function olho1a1() {
+  if (!pessoasAtivas.length) {
+    return olho('1:1 do mês', 0, '<p class="vazio-msg">Sem pessoas ativas.</p>');
+  }
+
+  var uteis = diasUteisDoMes();
+  var janela = uteis.slice(Math.max(0, uteis.length - pessoasAtivas.length));
+  var k = janela.indexOf(hojeIso());
+
+  if (k < 0) {
+    return olho('1:1 do mês', 0,
+      '<p class="vazio-msg">Fora da janela — ela começa em ' + fmtData(janela[0]) + '.</p>');
+  }
+
+  var ordenadas = pessoasAtivas.slice().sort(function (a, b) {
+    return a.nome.localeCompare(b.nome, 'pt-BR');
+  });
+  var alvo = ordenadas[k];
+  if (!alvo) return olho('1:1 do mês', 0, '<p class="vazio-msg">Sem pendência hoje.</p>');
+
+  /* Já feito neste ciclo: 21 dias, e não mês-calendário, para não quebrar na virada. */
+  var feito = alvo.data_ultimo_1a1 &&
+    diasEntre(alvo.data_ultimo_1a1, hojeIso()) <= DIAS_CICLO_1A1;
+
+  if (feito) {
+    return olho('1:1 do mês', 0, '<p class="vazio-msg">O de <b>' + esc(alvo.nome) +
+      '</b> já foi feito neste ciclo (' + fmtData(alvo.data_ultimo_1a1) + ').</p>');
+  }
+
+  return olho('1:1 do mês', 0,
+    '<div class="um-a-um">' +
+      '<div class="obs">Pendente hoje</div>' +
+      '<div class="quem">' + esc(alvo.nome) + '</div>' +
+      '<div class="obs">Nível ' + esc(alvo.nivel || '—') + ' · montar com a compilador-1a1</div>' +
+    '</div>');
+}
+
+/* Dias úteis (seg–sex) do mês corrente, em ISO. Fim de semana nunca conta. */
+function diasUteisDoMes() {
+  var hoje = new Date();
+  var ano = hoje.getFullYear(), mes = hoje.getMonth();
+  var dias = [];
+
+  for (var d = 1; d <= 31; d++) {
+    var data = new Date(ano, mes, d);
+    if (data.getMonth() !== mes) break;
+    var semana = data.getDay();
+    if (semana === 0 || semana === 6) continue;
+    dias.push(ano + '-' + dois(mes + 1) + '-' + dois(d));
+  }
+  return dias;
+}
+
+/* ==========================================================================
+   BOARD
+   ========================================================================== */
+function agrupar(lista) {
+  var grupos = {};
+  STATUS_COLUNAS.forEach(function (s) { grupos[s] = []; });
+  grupos[SEM_STATUS] = [];
+
+  lista.forEach(function (card) {
+    var chave = STATUS_COLUNAS.indexOf(card.status) >= 0 ? card.status : SEM_STATUS;
+    grupos[chave].push(card);
+  });
+  return grupos;
+}
+
+function htmlBoard() {
+  var visiveis = termoBusca
+    ? cards.filter(function (c) { return casaBusca(c, termoBusca); })
+    : cards;
+
+  var grupos = agrupar(visiveis);
+
+  var colunas = STATUS_COLUNAS.slice();
+  if (grupos[SEM_STATUS].length > 0) colunas.push(SEM_STATUS);
+
+  var nada = !visiveis.length && termoBusca
+    ? '<div class="faixa"><div class="aviso">Nenhum card com “' + esc(termoBusca) + '”.</div></div>'
+    : '';
+
+  return nada + '<div class="board">' + colunas.map(function (status) {
+    return htmlColuna(status, grupos[status]);
+  }).join('') + '</div>';
+}
+
+function casaBusca(card, termo) {
+  return String(card.titulo || '').toLowerCase().indexOf(termo) >= 0;
+}
+
+function htmlColuna(status, doStatus) {
+  var colapsada = status === STATUS_DONE && doneColapsada;
+
+  /* Só a coluna Done recorta. Nas outras, "oculto" seria mentira. */
+  var mostrados = doStatus;
+  if (status === STATUS_DONE && doneRecente) mostrados = doStatus.filter(concluidoRecentemente);
+  var ocultos = doStatus.length - mostrados.length;
+
+  var opcoes = (status === STATUS_DONE && !colapsada)
+    ? '<div class="coluna-opcoes"><label><input type="checkbox" ' +
+      (doneRecente ? 'checked' : '') + ' onchange="alternarRecorteDone()">Últimos ' +
+      DIAS_RECORTE_DONE + ' dias</label></div>'
+    : '';
+
+  var corpo = colapsada ? '' :
+    '<div class="coluna-corpo">' +
+      (mostrados.length ? mostrados.map(htmlTile).join('')
+                        : '<p class="coluna-vazia">Nenhum card</p>') +
+    '</div>';
+
+  /* O cabeçalho sempre diz quantos sumiram. Filtro que esconde em silêncio é como se
+     perde a confiança no board, e o custo cresce junto com a coluna. */
+  var contagem = (colapsada || !ocultos)
+    ? doStatus.length
+    : mostrados.length + ' <span class="coluna-ocultos">de ' + doStatus.length + '</span>';
+
+  var clique = status === STATUS_DONE ? ' onclick="alternarDone()"' : '';
+
+  return '<section class="coluna' + (colapsada ? ' colapsada' : '') + '"' +
+      ' data-status="' + esc(status) + '">' +
+    '<div class="coluna-cab"' + clique + '>' +
+      '<span class="ponto s-' + (CLASSE_STATUS[status] || 'sem-status') + '"></span>' +
+      '<span class="coluna-nome">' + esc(status) + '</span>' +
+      '<span class="coluna-num">' + contagem + '</span>' +
+    '</div>' + opcoes + corpo +
+  '</section>';
+}
+
+/* Recorte por `data_conclusao`, caindo para `atualizado_em` quando ela está vazia.
+   Dos 18 cards migrados, 17 têm a de conclusão; sem o fallback o que falta sumiria
+   para sempre atrás do filtro, que é exatamente o que este board não pode fazer. */
+function concluidoRecentemente(card) {
+  var quando = String(card.data_conclusao || card.atualizado_em || '').slice(0, 10);
+  if (!quando) return true;   // sem data nenhuma, aparece — na dúvida, mostre
+  return quando >= isoMenosDias(DIAS_RECORTE_DONE);
+}
+
+function htmlTile(card) {
+  var titulo = card.titulo
+    ? '<div class="tile-titulo">' + esc(card.titulo) + '</div>'
+    : '<div class="tile-titulo vazio">(sem título)</div>';
+
+  var meta = '';
+  if (card.prioridade) {
+    meta += '<span class="pill ' + (CLASSE_PRIORIDADE[card.prioridade] || 'p-baixa') + '">' +
+            esc(card.prioridade) + '</span>';
+  }
+
+  var atrasado = card.prazo && card.status !== STATUS_DONE && card.prazo < hojeIso();
+  if (card.prazo) {
+    meta += '<span class="prazo' + (atrasado ? ' atrasado' : '') + '">' + fmtData(card.prazo) + '</span>';
+  }
+  if (card.aguardando_cliente) meta += '<span class="pill aguardando">Aguardando cliente</span>';
+
+  var nomes = nomesDeIds(card.delegado_para);
+  var delegado = (card.status === STATUS_DELEGADO && nomes)
+    ? '<div class="delegado">' + esc(nomes) + '</div>' : '';
+
+  /* data-id em vez de interpolar o id na chamada: nada de aspas dentro de atributo. */
+  return '<article class="tile' + (atrasado ? ' vencido' : '') + '" draggable="true"' +
+         ' data-id="' + esc(card.id) + '" onclick="abrirEdicao(this.dataset.id)">' + titulo +
+    '<div class="tile-linha">' + meta + '</div>' + delegado + '</article>';
+}
+
+function alternarDone() { doneColapsada = !doneColapsada; desenhar(); }
+function alternarRecorteDone() { doneRecente = !doneRecente; desenhar(); }
+
+function aoBuscar() {
+  var campo = document.getElementById('busca');
+  termoBusca = campo.value.trim().toLowerCase();
+  document.getElementById('caixaBusca').classList.toggle('tem-texto', !!campo.value);
+  if (visao === 'board') desenhar();
+}
+
+function limparBusca() {
+  document.getElementById('busca').value = '';
+  aoBuscar();
+}
+
+/* ==========================================================================
+   DASHBOARD
+   ========================================================================== */
+function htmlDashboard() {
+  if (!cards.length) {
+    return '<div class="pagina"><p class="vazio-msg">Nenhum card ainda.</p></div>';
+  }
+
+  var lista = ativos();
+  var semPrazo = lista.filter(function (c) { return !c.prazo; });
+
+  var cartao = function (num, rotulo, alerta) {
+    return '<div class="cartao' + (alerta && num ? ' alerta' : '') + '">' +
+      '<div class="cartao-num">' + num + '</div>' +
+      '<div class="cartao-rot">' + rotulo + '</div></div>';
+  };
+
+  return '<div class="pagina">' +
+    '<div class="secao"><div class="cartoes">' +
+      cartao(lista.length, 'cards ativos') +
+      cartao(vencidos().length, 'vencidos', true) +
+      cartao(aguardandoCliente().length, 'aguardando cliente') +
+      cartao(delegadosAConferir([]).length, 'delegados há +' + DIAS_CONFERIR_DELEGADO + 'd', true) +
+      cartao(semPrazo.length, 'sem prazo') +
+    '</div></div>' +
+
+    '<div class="secao">' +
+      '<p class="secao-titulo">Prioridade × status <span class="secao-num">ativos</span></p>' +
+      htmlMatriz(lista) +
+    '</div>' +
+
+    '<div class="secao">' +
+      '<p class="secao-titulo">Previsão das demandas ativas' +
+        '<span class="espaco"></span>' + legendaGantt() + '</p>' +
+      htmlGantt(lista) +
+    '</div>' +
+  '</div>';
+}
+
+/**
+ * Prioridade × status, com totais nas margens.
+ *
+ * É aqui que "prioridade e atenção discordam" fica visível: uma `Alta` parada em
+ * Not started ao lado de uma `Baixa` em In progress. Uma tabela só responde as duas
+ * contagens que interessam — por status e por prioridade — nas margens dela.
+ */
+function htmlMatriz(lista) {
+  var linhas = PRIORIDADES.concat(['—']);
+  var colunas = STATUS_COLUNAS.filter(function (s) { return s !== STATUS_DONE; });
+
+  var conta = function (prio, status) {
+    return lista.filter(function (c) {
+      var p = c.prioridade || '—';
+      var s = c.status || SEM_STATUS;
+      return p === prio && s === status;
+    }).length;
+  };
+
+  var maior = 0;
+  linhas.forEach(function (p) {
+    colunas.forEach(function (s) { maior = Math.max(maior, conta(p, s)); });
+  });
+
+  var cab = '<tr><th></th>' + colunas.map(function (s) {
+    return '<th>' + esc(s) + '</th>';
+  }).join('') + '<th class="total">total</th></tr>';
+
+  var corpo = linhas.map(function (p) {
+    var totalLinha = 0;
+    var celulas = colunas.map(function (s) {
+      var n = conta(p, s);
+      totalLinha += n;
+      /* Intensidade proporcional ao maior valor da tabela: cor mostra onde a massa
+         está mais rápido que número, e o número continua lá para o exato. */
+      var alfa = maior ? (n / maior) * 0.5 : 0;
+      var estilo = n ? ' style="background:rgba(99,102,241,' + alfa.toFixed(3) + ')"' : '';
+      return '<td class="celula' + (n ? '' : ' zero') + '"' + estilo + '>' + (n || '·') + '</td>';
+    }).join('');
+
+    return '<tr><th>' + esc(p === '—' ? 'sem prioridade' : p) + '</th>' + celulas +
+           '<td class="total">' + totalLinha + '</td></tr>';
+  }).join('');
+
+  var rodape = '<tr><th class="total">total</th>' + colunas.map(function (s) {
+    var n = lista.filter(function (c) { return (c.status || SEM_STATUS) === s; }).length;
+    return '<td class="total">' + n + '</td>';
+  }).join('') + '<td class="total">' + lista.length + '</td></tr>';
+
+  return '<div class="painel"><table class="matriz"><thead>' + cab + '</thead>' +
+         '<tbody>' + corpo + rodape + '</tbody></table></div>';
+}
+
+/**
+ * Gantt das demandas ativas, com a barra em dois segmentos.
+ *
+ * **Por que dois segmentos.** `data_inicio` só é carimbada ao entrar em In progress, e
+ * hoje só 5 dos 20 ativos a têm — um Gantt de `data_inicio → prazo` mostraria 4 cards.
+ * Então a barra começa em `criado_em` e o trecho até o início real é *espera*. Card em
+ * Not started vira uma barra inteira de espera até o prazo, que é justamente a leitura
+ * de previsibilidade: há quanto tempo isto está parado e quando vence.
+ *
+ * Sem `prazo` não há fim, e o card cai na lista abaixo em vez de virar barra inventada.
+ *
+ * **Dois filtros, vindos do `gantt-model`:** arraste na régua recorta a janela de tempo, e a
+ * legenda de status esconde linhas. Os dois compõem, e o que sai da vista é sempre contado —
+ * gráfico que encolhe em silêncio passa a impressão de que o trabalho diminuiu.
+ */
+function htmlGantt(lista) {
+  var comPrazo = lista.filter(function (c) { return c.prazo && c.criado_em; });
+  var semPrazo = lista.filter(function (c) { return !c.prazo; });
+
+  var aviso = semPrazo.length
+    ? '<p class="vazio-msg" style="margin-top:10px">' + semPrazo.length +
+      ' card(s) ativo(s) sem prazo ficaram de fora: ' +
+      esc(semPrazo.map(function (c) { return c.titulo; }).join(' · ')) + '</p>'
+    : '';
+
+  if (!comPrazo.length) {
+    return '<p class="vazio-msg">Nenhum card ativo com prazo definido.</p>' + aviso;
+  }
+
+  comPrazo.sort(function (a, b) { return a.prazo.localeCompare(b.prazo); });
+
+  /* A janela vem do `gtJanela()`, e não de uma conta local, porque o arraste precisa da
+     mesma escala para converter pixel em data enquanto o HTML já está na tela. Duas contas
+     equivalentes derivariam no primeiro ajuste, e o recorte cairia alguns dias ao lado. */
+  var janela = gtJanela();
+  var t0 = janela.inicio;
+  var total = janela.duracao;
+  var tFim = t0 + total;
+
+  /* Duas peneiras, contadas separadamente: elas mandam consertar coisas diferentes — uma é
+     um clique na legenda, a outra é um duplo clique na régua. */
+  var ocultosPorStatus = comPrazo.filter(gtStatusOculto).length;
+  var noStatus = comPrazo.filter(function (c) { return !gtStatusOculto(c); });
+  var visiveis = noStatus.filter(function (c) { return gtNaJanela(c, t0, tFim); });
+  var foraDaJanela = noStatus.length - visiveis.length;
+
+  var recorte = htmlRecorteGantt(t0, tFim, ocultosPorStatus, foraDaJanela);
+
+  if (!visiveis.length) {
+    return recorte +
+      '<p class="vazio-msg">Nenhum card no recorte atual.</p>' + aviso;
+  }
+
+  /* A contagem de semanas vem da janela, que já fechou nelas. Recontar aqui reabriria a
+     divergência entre o rótulo da coluna e a posição da barra. */
+  var semanas = janela.semanas;
+  /* Colunas mais largas quando a janela é curta: um zoom de duas semanas com 62px viraria
+     um gráfico de 124px, e o recorte que deveria aproximar afastaria. */
+  var largura = Math.max(62, Math.ceil(620 / semanas));
+  var W = semanas * largura;
+  var pos = function (ms) { return (ms - t0) / total; };
+
+  var eixo = '';
+  for (var i = 0; i < semanas; i++) {
+    eixo += '<div style="width:' + largura + 'px">' + fmtDiaMes(t0 + i * 7 * MS_DIA) + '</div>';
+  }
+
+  var hojeMs = msDeIso(hojeIso());
+  var marcaHoje = (hojeMs >= t0 && hojeMs <= tFim)
+    ? '<div class="gt-hoje" style="left:' + (pos(hojeMs) * 100).toFixed(3) + '%"><b>hoje</b></div>'
+    : '';
+
+  var nomes = '<div class="gt-espaco"></div>';
+  var faixas = '';
+
+  visiveis.forEach(function (c) {
+    nomes += '<div class="gt-nome" data-id="' + esc(c.id) + '" onclick="abrirEdicao(this.dataset.id)"' +
+             ' title="' + esc(c.titulo) + '">' + esc(c.titulo) + '</div>';
+    faixas += '<div class="gt-faixa">' + barraGantt(c, pos) + '</div>';
+  });
+
+  var grade = '<div class="gt-grade" style="background-image:linear-gradient(to right,' +
+    'var(--border) 1px,transparent 1px);background-size:' + largura + 'px 100%"></div>';
+
+  var selecao = gtArrasto
+    ? '<span class="gt-selecao" style="left:' + (Math.min(pos(gtArrasto.ancora), pos(gtArrasto.atual)) * 100).toFixed(3) +
+      '%;width:' + (Math.abs(pos(gtArrasto.atual) - pos(gtArrasto.ancora)) * 100).toFixed(3) + '%"></span>'
+    : '';
+
+  return recorte + '<div class="painel"><div class="gantt">' +
+      '<div class="gt-nomes">' + nomes + '</div>' +
+      '<div class="gt-tempo"><div class="gt-canvas" style="width:' + W + 'px">' +
+        '<div class="gt-eixo" title="Clique e arraste para recortar o período · dê dois cliques para voltar ao todo">' +
+          eixo + '</div>' + selecao + marcaHoje +
+        '<div class="gt-corpo">' + grade + faixas + '</div>' +
+      '</div></div>' +
+    '</div></div>' + aviso;
+}
+
+/** O card cruza a janela? Basta encostar — barra que começa antes e termina dentro conta. */
+function gtNaJanela(card, t0, tFim) {
+  var nasceu = msDeIso(card.criado_em.slice(0, 10));
+  var vence = msDeIso(card.prazo) + MS_DIA;
+  return nasceu <= tFim && vence >= t0;
+}
+
+function gtStatusOculto(card) {
+  return gtStatusOcultos[CLASSE_STATUS[card.status] || 'sem-status'] === true;
+}
+
+/**
+ * A faixa que diz qual é o recorte e o que ele escondeu.
+ *
+ * Só aparece quando há recorte. Filtro que esconde sem dizer é como esta tela perderia a
+ * confiança de quem a abre — e aqui o custo é maior que na coluna Done, porque um Gantt
+ * com menos barras parece um mês mais leve.
+ */
+function htmlRecorteGantt(t0, tFim, ocultosPorStatus, foraDaJanela) {
+  var partes = [];
+
+  if (gtZoom) {
+    partes.push('<span class="gt-recorte">' + fmtDiaMes(t0) + ' – ' + fmtDiaMes(tFim) +
+      (foraDaJanela ? ' · ' + foraDaJanela + ' fora' : '') +
+      ' <button onclick="gtLimparZoom()">ver tudo</button></span>');
+  }
+
+  if (ocultosPorStatus) {
+    partes.push('<span class="gt-recorte">' + ocultosPorStatus + ' card(s) em status oculto' +
+      ' <button onclick="gtMostrarTodosStatus()">mostrar</button></span>');
+  }
+
+  if (!partes.length) return '';
+  return '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">' +
+    partes.join('') + '</div>';
+}
+
+function barraGantt(card, pos) {
+  var nasceu = msDeIso(card.criado_em.slice(0, 10));
+  var vence = msDeIso(card.prazo) + MS_DIA;          // fim inclusivo: cobre o último dia
+  var comecou = card.data_inicio ? msDeIso(card.data_inicio) : null;
+
+  var esq = Math.max(0, pos(nasceu));
+  var dir = Math.min(1, pos(vence));
+  if (dir <= esq) dir = esq + 0.002;
+
+  /* Quebra entre espera e execução. Sem `data_inicio`, a barra inteira é espera —
+     e é isso mesmo que o card em Not started significa. */
+  var quebra = comecou !== null ? Math.min(Math.max(pos(comecou), esq), dir) : dir;
+  var fatiaEspera = (quebra - esq) / (dir - esq) * 100;
+
+  var atrasado = card.prazo < hojeIso();
+  var classeExec = 'gt-exec-' + (CLASSE_STATUS[card.status] || 'sem-status');
+
+  var dica = card.titulo + '\n' + fmtData(card.criado_em) + ' → ' + fmtData(card.prazo) +
+    (card.data_inicio ? '\nIniciado em ' + fmtData(card.data_inicio) : '\nAinda não iniciado') +
+    '\n' + (card.status || 'Sem status') + (atrasado ? ' · vencido' : '');
+
+  return '<div class="gt-bar' + (atrasado ? ' atrasada' : '') + '"' +
+      ' style="left:' + (esq * 100).toFixed(3) + '%;width:' + ((dir - esq) * 100).toFixed(3) + '%"' +
+      ' title="' + esc(dica) + '">' +
+      '<span class="gt-espera" style="width:' + fatiaEspera.toFixed(2) + '%"></span>' +
+      '<span class="' + classeExec + '" style="width:' + (100 - fatiaEspera).toFixed(2) + '%"></span>' +
+    '</div>';
+}
+
+/**
+ * Legenda em dois grupos, porque ela tinha duas naturezas misturadas.
+ *
+ * `esperando` é um **trecho da barra**; `In progress` é um **status**. Na versão anterior os
+ * dois estavam lado a lado, e transformar aquilo em filtro faria "clicar em esperando" não
+ * querer dizer nada. Agora o primeiro grupo filtra linhas e o segundo só explica cor.
+ */
+function legendaGantt() {
+  var alternador = function (classe, rotulo) {
+    var off = gtStatusOcultos[classe] === true;
+    return '<button class="' + (off ? 'off' : '') + '" onclick="gtAlternarStatus(\'' + classe + '\')"' +
+      ' title="' + (off ? 'Mostrar' : 'Ocultar') + ' ' + esc(rotulo) + '">' +
+      '<i class="gt-exec-' + classe + '"></i>' + esc(rotulo) + '</button>';
+  };
+
+  return '<span class="gt-legenda">' +
+    '<span class="grupo">' +
+      alternador('not-started', 'Not started') +
+      alternador('in-progress', 'In progress') +
+      alternador('delegado', 'Delegado') +
+      alternador('sem-status', 'Sem status') +
+    '</span>' +
+    /* Não alternáveis: são leitura da barra, não recorte do conjunto. `esperando` aparece em
+       toda linha sem `data_inicio`, e esconder isso apagaria a barra inteira dela. */
+    '<span class="grupo">' +
+      '<span><i class="gt-espera"></i>esperando</span>' +
+      '<span><i style="background:var(--surface);box-shadow:0 0 0 2px var(--bad)"></i>vencido</span>' +
+    '</span>' +
+  '</span>';
+}
+
+/* ------------------------- os dois filtros do Gantt ----------------------- */
+
+function gtAlternarStatus(classe) {
+  if (gtStatusOcultos[classe]) delete gtStatusOcultos[classe];
+  else gtStatusOcultos[classe] = true;
+  desenhar();
+}
+
+function gtMostrarTodosStatus() { gtStatusOcultos = {}; desenhar(); }
+
+function gtLimparZoom() { gtZoom = null; desenhar(); }
+
+/**
+ * Liga o arraste da régua. Chamada depois de cada render do Dashboard, porque `desenhar()`
+ * refaz o HTML e o listener anterior morre com o nó antigo.
+ *
+ * O mapeamento usa o retângulo da própria régua, que tem a largura do canvas inteiro — então
+ * funciona igual com a área rolada, sem precisar somar `scrollLeft`.
+ */
+function ligarGantt() {
+  var eixo = document.querySelector('.gt-eixo');
+  if (!eixo) return;
+
+  var msEm = function (clientX) {
+    var r = eixo.getBoundingClientRect();
+    if (!r.width) return null;
+    var f = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+    return gtJanela().inicio + f * gtJanela().duracao;
+  };
+
+  eixo.addEventListener('pointerdown', function (ev) {
+    if (ev.button !== 0) return;
+    var ms = msEm(ev.clientX);
+    if (ms === null) return;
+    gtArrasto = { ancora: ms, atual: ms };
+    ev.preventDefault();
+
+    var mover = function (e) {
+      var m = msEm(e.clientX);
+      if (m === null) return;
+      gtArrasto.atual = m;
+      desenharSelecaoGantt();
+    };
+
+    var soltar = function () {
+      window.removeEventListener('pointermove', mover);
+      window.removeEventListener('pointerup', soltar);
+
+      var d = gtArrasto;
+      gtArrasto = null;
+
+      var a = d ? Math.min(d.ancora, d.atual) : 0;
+      var b = d ? Math.max(d.ancora, d.atual) : 0;
+
+      /* Arraste curto é clique, não recorte — sem isso um clique acidental na régua zeraria
+         a janela e o gráfico sumiria.
+         E o retorno aqui **não redesenha**, de propósito: `desenhar()` troca o nó da régua,
+         e o segundo clique de um duplo clique cairia num nó novo — o dblclick nunca
+         dispararia e não haveria como voltar ao todo. */
+      if (!d || b - a < gtJanela().duracao * 0.02) {
+        var faixa = document.querySelector('.gt-selecao');
+        if (faixa) faixa.remove();
+        return;
+      }
+
+      gtZoom = { inicio: Math.round(a), fim: Math.round(b) };
+      desenhar();   // já religa a régua, no próprio desenhar()
+    };
+
+    window.addEventListener('pointermove', mover);
+    window.addEventListener('pointerup', soltar);
+  });
+
+  eixo.addEventListener('dblclick', gtLimparZoom);
+}
+
+/**
+ * A janela efetiva em ms, **arredondada para semanas inteiras**.
+ *
+ * Precisa ser derivável fora do `htmlGantt` porque o arraste converte pixel em data enquanto
+ * o HTML já está na tela — e as três coisas (desenhar, arrastar, filtrar) têm que concordar
+ * na mesma escala.
+ *
+ * O arredondamento não é estética: o eixo desenha uma coluna por semana, e o rótulo da
+ * coluna `i` diz `t0 + i×7d`. Se a duração não fechar em semanas, aquela coluna fica na
+ * fração `i/semanas` da largura, que corresponde a outra data — o rótulo passa a apontar
+ * para um lugar onde ele não está. Some no domínio completo (a folga de 7 dias de cada lado
+ * quase fecha), e aparece no primeiro zoom curto.
+ */
+function gtJanela() {
+  var bruta = gtJanelaBruta_();
+  var semanas = Math.max(1, Math.ceil(bruta.duracao / (7 * MS_DIA)));
+  return { inicio: bruta.inicio, duracao: semanas * 7 * MS_DIA, semanas: semanas };
+}
+
+/** O intervalo pedido, antes do arredondamento: o zoom, ou o domínio de todos os ativos. */
+function gtJanelaBruta_() {
+  if (gtZoom) return { inicio: gtZoom.inicio, duracao: gtZoom.fim - gtZoom.inicio };
+
+  var comPrazo = ativos().filter(function (c) { return c.prazo && c.criado_em; });
+  if (!comPrazo.length) return { inicio: 0, duracao: 7 * MS_DIA };
+
+  var min = null, max = null;
+  comPrazo.forEach(function (c) {
+    var nasceu = msDeIso(c.criado_em.slice(0, 10));
+    var vence = msDeIso(c.prazo);
+    if (min === null || nasceu < min) min = nasceu;
+    if (max === null || vence > max) max = vence;
+  });
+
+  var t0 = min - 7 * MS_DIA;
+  return { inicio: t0, duracao: (max + 7 * MS_DIA) - t0 };
+}
+
+/* Durante o arraste, só a faixa se move. Redesenhar a tela inteira a cada pointermove
+   custaria um reflow do Gantt por pixel, e o arraste engasgaria. */
+function desenharSelecaoGantt() {
+  var canvas = document.querySelector('.gt-canvas');
+  if (!canvas || !gtArrasto) return;
+
+  var janela = gtJanela();
+  var pct = function (ms) { return (ms - janela.inicio) / janela.duracao * 100; };
+  var a = Math.min(pct(gtArrasto.ancora), pct(gtArrasto.atual));
+  var largura = Math.abs(pct(gtArrasto.atual) - pct(gtArrasto.ancora));
+
+  var faixa = canvas.querySelector('.gt-selecao');
+  if (!faixa) {
+    faixa = document.createElement('span');
+    faixa.className = 'gt-selecao';
+    canvas.appendChild(faixa);
+  }
+  faixa.style.left = a.toFixed(3) + '%';
+  faixa.style.width = largura.toFixed(3) + '%';
+}
+
+/* ==========================================================================
+   DRAG AND DROP
+   --------------------------------------------------------------------------
+   Move só o status. As datas de transição quem carimba é a camada, então soltar em
+   Done preenche `data_conclusao` de graça.
+
+   O movimento é otimista — o card muda de coluna antes da resposta — e por isso a
+   reversão é obrigatória: otimismo sem reversão é mentira na tela.
+   ========================================================================== */
+function ligarArrasto() {
+  Array.prototype.forEach.call(document.querySelectorAll('.tile'), function (el) {
+    el.addEventListener('dragstart', aoIniciarArrasto);
+    el.addEventListener('dragend', aoTerminarArrasto);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.coluna'), function (el) {
+    el.addEventListener('dragover', aoPassarPorCima);
+    el.addEventListener('dragleave', aoSairDeCima);
+    el.addEventListener('drop', aoSoltar);
+  });
+}
+
+function aoIniciarArrasto(ev) {
+  var id = ev.currentTarget.dataset.id;
+  arrastando = { id: id, statusOrigem: (cardsPorId[id] || {}).status };
+  ev.currentTarget.classList.add('arrastando');
+  ev.dataTransfer.effectAllowed = 'move';
+  /* Alguns navegadores exigem payload para iniciar o arrasto. O id de verdade vive em
+     `arrastando`: dataTransfer.getData só é legível no drop, e o dragover precisa antes. */
+  ev.dataTransfer.setData('text/plain', id);
+}
+
+function aoTerminarArrasto(ev) {
+  ev.currentTarget.classList.remove('arrastando');
+  limparAlvos();
+}
+
+function aoPassarPorCima(ev) {
+  if (!arrastando) return;
+  var status = ev.currentTarget.dataset.status;
+  if (status === SEM_STATUS || status === arrastando.statusOrigem) return;
+
+  ev.preventDefault();               // sem isto o drop nunca dispara
+  ev.dataTransfer.dropEffect = 'move';
+  ev.currentTarget.classList.add('alvo');
+}
+
+function aoSairDeCima(ev) {
+  /* Só apaga o realce quando o cursor sai da coluna de verdade — passar sobre um tile
+     dispara dragleave na coluna, e sem esta checagem o contorno pisca. */
+  if (!ev.currentTarget.contains(ev.relatedTarget)) ev.currentTarget.classList.remove('alvo');
+}
+
+function aoSoltar(ev) {
+  ev.preventDefault();
+  limparAlvos();
+  if (!arrastando) return;
+
+  var destino = ev.currentTarget.dataset.status;
+  var movimento = arrastando;
+  arrastando = null;
+
+  if (destino === SEM_STATUS || destino === movimento.statusOrigem) return;
+
+  /* Card em Delegado sem ninguém é o estado que faz a tela Hoje mostrar delegado sem
+     dono. Um passo a mais no caso raro em troca de não produzir isso. */
+  if (destino === STATUS_DELEGADO) return abrirDelegacao(movimento);
+
+  aplicarMovimento(movimento, destino, null);
+}
+
+function limparAlvos() {
+  Array.prototype.forEach.call(document.querySelectorAll('.coluna.alvo'), function (el) {
+    el.classList.remove('alvo');
+  });
+}
+
+/**
+ * Move na tela primeiro, grava depois, e desfaz se o servidor recusar.
+ *
+ * @param {?string} delegados csv de ids, quando o destino é Delegado; null nos outros.
+ */
+function aplicarMovimento(movimento, destino, delegados) {
+  var card = cardsPorId[movimento.id];
+  if (!card) return;
+
+  var antes = { status: card.status, delegado_para: card.delegado_para };
+
+  card.status = destino;
+  if (delegados !== null) card.delegado_para = delegados;
+  desenhar();
+
+  var patch = { status: destino };
+  if (delegados !== null) patch.delegado_para = delegados;
+
+  google.script.run
+    .withSuccessHandler(function (atualizado) {
+      /* Troca o card local pelo que voltou do servidor: ele traz `atualizado_em` e as datas
+         de transição recém-carimbadas, que o otimismo não tinha como adivinhar. */
+      cardsPorId[atualizado.id] = atualizado;
+      for (var i = 0; i < cards.length; i++) {
+        if (cards[i].id === atualizado.id) { cards[i] = atualizado; break; }
+      }
+      desenhar();
+    })
+    .withFailureHandler(function (err) {
+      card.status = antes.status;
+      card.delegado_para = antes.delegado_para;
+      desenhar();
+      document.getElementById('aviso').innerHTML =
+        '<div class="aviso">Não foi possível mover “' + esc(card.titulo) + '” para ' +
+        esc(destino) + '. O card voltou para ' + esc(antes.status) + '.<br>' +
+        esc(mensagem(err)) + '</div>';
+    })
+    .updateCard(movimento.id, patch);
+}
+
+function abrirDelegacao(movimento) {
+  var card = cardsPorId[movimento.id];
+  if (!card) return;
+
+  delegacaoPendente = movimento;
+  document.getElementById('textoDelegar').textContent = card.titulo || '(sem título)';
+  document.getElementById('erroDelegar').innerHTML = '';
+  document.getElementById('d-pessoas').innerHTML = caixasDePessoas(card.delegado_para);
+
+  /* Card que já esteve delegado volta com as pessoas de antes marcadas — sair de Delegado
+     não limpa o campo, pelo mesmo motivo de a camada não limpar as datas de transição. */
+  marcarNo('#d-pessoas', card.delegado_para);
+  document.getElementById('overlayDelegar').classList.add('aberto');
+}
+
+function confirmarDelegacao() {
+  var ids = idsMarcadosEm('#d-pessoas');
+  if (!ids) {
+    document.getElementById('erroDelegar').innerHTML =
+      '<div class="erro-form">Escolha pelo menos uma pessoa, ou cancele o movimento.</div>';
+    return;
+  }
+  var movimento = delegacaoPendente;
+  fecharDelegacao();
+  aplicarMovimento(movimento, STATUS_DELEGADO, ids);
+}
+
+/* Cancelar o seletor cancela o movimento: o card nunca chegou a sair do lugar. */
+function cancelarDelegacao() { fecharDelegacao(); }
+
+function fecharDelegacao() {
+  delegacaoPendente = null;
+  document.getElementById('overlayDelegar').classList.remove('aberto');
+}
+
+function cliqueForaCancela(ev) {
+  if (ev.target.id === 'overlayDelegar') cancelarDelegacao();
+}
+
+/* ==========================================================================
+   ANOTAÇÕES
+   --------------------------------------------------------------------------
+   A tela responde distribuição de atenção, não conteúdo: quem está sem receber
+   feedback, e como está o balanço de cada um. Ler o que a nota diz é trabalho da
+   compilador-1a1, que tem a matriz de competências para isso.
+   ========================================================================== */
+function htmlAnotacoes() {
+  if (erroAnotacoes) {
+    return '<div class="faixa"><div class="erro"><b>Não foi possível carregar as anotações.</b>' +
+      '<code>' + esc(erroAnotacoes) + '</code></div></div>';
+  }
+  if (!anotacoes || !anotacoes.length) {
+    return '<div class="pagina"><p class="vazio-msg">Nenhuma anotação registrada ainda.</p></div>';
+  }
+
+  var inativos = pessoas.length - pessoasAtivas.length;
+
+  return '<div class="pagina">' +
+    htmlResumoAnotacoes() +
+    '<div class="secao"><p class="secao-titulo">Distribuição por pessoa' +
+      ocultos(inativos, inativos + ' inativo' + (inativos > 1 ? 's' : '') + ' fora da conta') +
+      '</p>' + htmlPorPessoa() + '</div>' +
+    '<div class="secao"><p class="secao-titulo">Anotações' +
+      ocultos(anotacoes.length - notasDeAtivos().length, 'de quem saiu do time') +
+      '</p>' + htmlFiltros() + htmlListaNotas() + '</div>' +
+  '</div>';
+}
+
+/**
+ * As anotações que a tela considera — as de gente ativa.
+ *
+ * **Id que não resolve continua aparecendo.** Só some quem está na aba e desmarcado; nota
+ * apontando para ninguém é dado órfão, e esconder órfão é criar um problema que ninguém
+ * acha. É a mesma regra que faz a lista imprimir o id cru quando o nome não resolve.
+ */
+function notasDeAtivos() {
+  return anotacoes.filter(function (a) {
+    var p = pessoasPorId[a.pessoa_id];
+    return !p || p.ativo;
+  });
+}
+
+/* "· N ocultos". Nada, quando não há nada escondido. */
+function ocultos(n, motivo) {
+  if (!n) return '';
+  return ' <span class="ocultos">· ' + n + ' oculto' + (n > 1 ? 's' : '') +
+         (motivo ? ', ' + motivo : '') + '</span>';
+}
+
+function htmlResumoAnotacoes() {
+  var estat = estatisticasPorPessoa();
+  var notas = notasDeAtivos();
+  var positivas = notas.filter(function (a) { return a.tipo === 'positivo'; }).length;
+  var esquecidos = estat.filter(function (e) { return e.dias === null || e.dias > 30; }).length;
+
+  var cartao = function (num, rotulo, alerta) {
+    return '<div class="cartao' + (alerta && num ? ' alerta' : '') + '">' +
+      '<div class="cartao-num">' + num + '</div><div class="cartao-rot">' + rotulo + '</div></div>';
+  };
+
+  return '<div class="secao"><div class="cartoes">' +
+    cartao(notas.length, 'anotações') +
+    cartao(positivas, 'positivas') +
+    cartao(notas.length - positivas, 'de melhoria') +
+    cartao(esquecidos, 'sem feedback há +30d', true) +
+  '</div></div>';
+}
+
+/**
+ * Uma linha por pessoa **ativa**, ordenada pelo esquecimento.
+ *
+ * Percorre as pessoas e não as anotações: quem nunca recebeu nada precisa aparecer, e é
+ * justamente essa pessoa que a tela existe para mostrar. Pelo mesmo motivo, quem saiu do
+ * time sai daqui — senão fica cravado no topo da lista de esquecidos para sempre, cobrando
+ * um feedback que não existe mais.
+ */
+function estatisticasPorPessoa() {
+  var hoje = hojeIso();
+
+  var estat = pessoasAtivas.map(function (p) {
+    var minhas = anotacoes.filter(function (a) { return a.pessoa_id === p.id; });
+    var ultima = minhas.reduce(function (maior, a) {
+      return a.data && a.data > maior ? a.data : maior;
+    }, '');
+
+    return {
+      pessoa: p,
+      /* `total` é a contagem crua, e não positivas+melhorias. As duas quase sempre batem,
+         mas `tipo` em branco existe — a leitura da aba não passa pela camada, e alguém pode
+         ter digitado a linha à mão. Somar as classificadas esconderia essa nota. */
+      total: minhas.length,
+      positivas: minhas.filter(function (a) { return a.tipo === 'positivo'; }).length,
+      melhorias: minhas.filter(function (a) { return a.tipo === 'melhoria'; }).length,
+      ultima: ultima,
+      dias: ultima ? diasEntre(ultima, hoje) : null   // null = nunca recebeu
+    };
+  });
+
+  /* Nunca-recebeu vai para o topo: é o caso mais grave, não um empate em zero. */
+  estat.sort(function (a, b) {
+    if (a.dias === null && b.dias === null) return a.pessoa.nome.localeCompare(b.pessoa.nome, 'pt-BR');
+    if (a.dias === null) return -1;
+    if (b.dias === null) return 1;
+    return b.dias - a.dias;
+  });
+  return estat;
+}
+
+function htmlPorPessoa() {
+  var estat = estatisticasPorPessoa();
+  if (!estat.length) return '<p class="vazio-msg">Nenhuma pessoa ativa cadastrada.</p>';
+
+  return '<div class="pessoas-lista">' + estat.map(function (e) {
+    /* A barra é proporção entre as classificadas, não sobre o total: nota sem `tipo` não
+       tem cor para ocupar, e dividir por ela deixaria a barra sem fechar. */
+    var classificadas = e.positivas + e.melhorias;
+    var barra = classificadas
+      ? '<div class="barra"><span class="b-pos" style="width:' +
+        (e.positivas / classificadas * 100) + '%"></span>' +
+        '<span class="b-mel" style="width:' + (e.melhorias / classificadas * 100) + '%"></span></div>'
+      : '<div class="barra"></div>';
+
+    /* Divergência entre o total e a soma das classificadas é nota com `tipo` em branco.
+       Não conserta e não esconde — diz, na dica. */
+    var semTipo = e.total - classificadas;
+    var dicaTotal = semTipo
+      ? ' title="' + semTipo + ' sem classificação de tipo"'
+      : '';
+
+    var silencio = e.dias === null
+      ? '<span class="silencio nunca">nunca</span>'
+      : '<span class="silencio ' + calorDoSilencio(e.dias) + '">' +
+        (e.dias === 0 ? 'hoje' : 'há ' + e.dias + 'd') + '</span>';
+
+    return '<div class="pessoa-linha com-total">' +
+        '<div><div class="pessoa-nome">' + esc(e.pessoa.nome) + '</div>' +
+        '<div class="pessoa-nivel">' + esc(e.pessoa.nivel || '—') + '</div></div>' +
+        '<div>' + silencio + '</div>' + barra +
+        '<div class="total-notas' + (e.total ? '' : ' vazio-total') + '"' + dicaTotal + '>' +
+          '<b>' + e.total + '</b><span>anotaç' + (e.total === 1 ? 'ão' : 'ões') + '</span></div>' +
+        '<div class="contagens"><b class="c-pos">' + e.positivas + '</b> positivas · ' +
+        '<b class="c-mel">' + e.melhorias + '</b> melhoria</div>' +
+      '</div>';
+  }).join('') + '</div>';
+}
+
+/* Escala de calor, não meta: o número é o dado, a cor só ordena a atenção do olho. */
+function calorDoSilencio(dias) {
+  if (dias > 30) return 'quente';
+  if (dias > 14) return 'morno';
+  return 'frio';
+}
+
+function htmlFiltros() {
+  var opcoesPessoa = '<option value="">Todas as pessoas</option>' + pessoasAtivas.map(function (p) {
+    return '<option value="' + esc(p.id) + '"' + (filtroPessoa === p.id ? ' selected' : '') +
+           '>' + esc(p.nome) + '</option>';
+  }).join('');
+
+  var chipTipo = function (valor, rotulo) {
+    return '<button class="chip' + (filtroTipo === valor ? ' ativo' : '') +
+           '" onclick="filtrarTipo(\'' + valor + '\')">' + rotulo + '</button>';
+  };
+
+  var chipsValor = VALORES.map(function (v) {
+    return '<button class="chip' + (filtroValor === v.campo ? ' ativo' : '') +
+           '" onclick="filtrarValor(\'' + v.campo + '\')">' + v.rotulo + '</button>';
+  }).join('');
+
+  return '<div class="filtros">' +
+      '<select onchange="filtrarPessoa(this.value)">' + opcoesPessoa + '</select>' +
+      chipTipo('', 'Todos') + chipTipo('positivo', 'Positivo') + chipTipo('melhoria', 'Melhoria') +
+      chipsValor +
+    '</div>';
+}
+
+function notasFiltradas() {
+  return notasDeAtivos().filter(function (a) {
+    if (filtroPessoa && a.pessoa_id !== filtroPessoa) return false;
+    if (filtroTipo && a.tipo !== filtroTipo) return false;
+    if (filtroValor && a[filtroValor] !== true) return false;
+    return true;
+  });
+}
+
+function htmlListaNotas() {
+  var lista = notasFiltradas();
+  if (!lista.length) return '<p class="vazio-msg">Nenhuma anotação com esses filtros.</p>';
+
+  return '<div class="notas">' + lista.map(function (a) {
+    var pessoa = pessoasPorId[a.pessoa_id];
+    var rotulos = VALORES
+      .filter(function (v) { return a[v.campo] === true; })
+      .map(function (v) { return '<span class="valor">' + v.rotulo + '</span>'; })
+      .join('');
+
+    /* Id que não resolve aparece como está, em vez de sumir: dado órfão visível é
+       problema; dado órfão escondido é problema que ninguém acha. */
+    var nome = pessoa ? pessoa.nome : a.pessoa_id;
+
+    return '<article class="nota">' +
+        '<div class="nota-cab">' +
+          '<span class="nota-pessoa">' + esc(nome) + '</span>' +
+          '<span class="pill t-' + esc(a.tipo || 'positivo') + '">' + esc(a.tipo || '—') + '</span>' +
+          '<span class="nota-data">' + (a.data ? fmtData(a.data) : 'sem data') + '</span>' +
+        '</div>' +
+        '<div class="nota-texto">' + esc(a.nota) + '</div>' +
+        (a.contexto ? '<div class="nota-contexto">' + esc(a.contexto) + '</div>' : '') +
+        (rotulos ? '<div class="valores">' + rotulos + '</div>' : '') +
+      '</article>';
+  }).join('') + '</div>';
+}
+
+/* ==========================================================================
+   RESUMOS — o compilado de 1:1 de cada pessoa
+   --------------------------------------------------------------------------
+   Uma pasta por pessoa, um Doc por compilação, escritos pela compilador-1a1. A tela
+   nunca precisa entender o texto: "o último" é o arquivo mais recente da pasta, e a
+   data sai do nome. Detalhe em Resumos.gs.
+   ========================================================================== */
+function htmlResumos() {
+  if (erroResumos) {
+    return '<div class="faixa"><div class="erro"><b>Não foi possível ler os resumos.</b>' +
+      'A pasta pode não estar configurada ainda.<code>' + esc(erroResumos) + '</code></div></div>';
+  }
+  if (!resumos) return '<p class="carregando">Carregando resumos…</p>';
+
+  var lista = resumos.pessoas.slice().sort(function (a, b) {
+    var da = a.resumos.length ? a.resumos[0].data : '';
+    var db = b.resumos.length ? b.resumos[0].data : '';
+    if (!da && !db) return a.nome.localeCompare(b.nome, 'pt-BR');
+    if (!da) return -1;          // nunca compilado vai para o topo
+    if (!db) return 1;
+    return da.localeCompare(db); // mais antigo primeiro
+  });
+
+  /* Quem está na aba como inativo NÃO cai aqui — casa pela pasta e sai depois, no
+     Resumos.gs. Órfã voltou a significar só uma coisa: pasta sem dona na aba. */
+  var orfas = resumos.orfas.length
+    ? '<div class="faixa"><div class="aviso">' + resumos.orfas.length +
+      ' pasta(s) em Resumos não casaram com ninguém da aba Pessoas: ' +
+      esc(resumos.orfas.join(' · ')) + '. O nome da pasta precisa ser igual ao da aba.' +
+      '</div></div>'
+    : '';
+
+  return orfas + '<div class="pagina">' +
+    '<div class="secao"><p class="secao-titulo">Último 1:1 compilado' +
+      ocultos(resumos.inativos, 'fora do time') + '</p>' +
+      (lista.length
+        ? '<div class="painel">' + lista.map(htmlLinhaResumo).join('') + '</div>'
+        : '<p class="vazio-msg">Nenhuma pessoa ativa cadastrada.</p>') +
+    '</div>' +
+  '</div>';
+}
+
+function htmlLinhaResumo(p) {
+  var ultimo = p.resumos.length ? p.resumos[0] : null;
+  var hoje = hojeIso();
+
+  var quando = ultimo
+    ? '<span class="silencio ' + calorDoSilencio(diasEntre(ultimo.data, hoje)) + '">' +
+      fmtData(ultimo.data) + '</span>'
+    : '<span class="silencio nunca">nunca compilado</span>';
+
+  /* O carimbo em Pessoas e a data do Doc deveriam bater. Quando não batem, alguma das
+     duas coisas não rodou — e isso só aparece se a tela mostrar as duas. */
+  var divergente = ultimo && p.data_ultimo_1a1 && p.data_ultimo_1a1 !== ultimo.data
+    ? '<span class="dias-fora" title="A data carimbada em Pessoas é ' +
+      esc(fmtData(p.data_ultimo_1a1)) + '">carimbo diverge</span>'
+    : '';
+
+  var acao = ultimo
+    ? '<button class="btn" data-id="' + esc(ultimo.id) + '" data-quem="' + esc(p.nome) + '"' +
+      ' onclick="abrirResumo(this.dataset.id, this.dataset.quem)">' +
+      (carregandoResumo === ultimo.id ? 'Abrindo…' : 'Ler') + '</button>'
+    : '';
+
+  var anteriores = p.resumos.length > 1
+    ? '<span class="chip-pessoa">+' + (p.resumos.length - 1) + ' anterior' +
+      (p.resumos.length > 2 ? 'es' : '') + '</span>'
+    : '';
+
+  return '<div class="pessoa-linha">' +
+      '<div><div class="pessoa-nome">' + esc(p.nome) + '</div>' +
+      '<div class="pessoa-nivel">' + esc(p.nivel || '—') + '</div></div>' +
+      '<div>' + quando + '</div>' +
+      '<div>' + anteriores + ' ' + divergente + '</div>' +
+      '<div style="text-align:right">' + acao + '</div>' +
+    '</div>';
+}
+
+/**
+ * Abre o compilado em tela cheia.
+ *
+ * O texto vem de um Doc e é prosa longa: `pre-wrap` preserva os parágrafos sem precisar
+ * interpretar a formatação que a skill escreveu, e a leitura sai da página em vez de
+ * dividir espaço com a lista — ela é o que se lê antes de entrar numa conversa.
+ */
+function abrirResumo(id, quem) {
+  carregandoResumo = id;
+  resumoQuem = quem || '';
+  desenhar();
+
+  google.script.run
+    .withSuccessHandler(function (r) {
+      carregandoResumo = '';
+      resumoAberto = r;
+      mostrarLeitura();
+      desenhar();
+    })
+    .withFailureHandler(function (err) {
+      carregandoResumo = '';
+      desenhar();
+      document.getElementById('aviso').innerHTML =
+        '<div class="aviso">Não foi possível abrir o resumo: ' + esc(mensagem(err)) + '</div>';
+    })
+    .lerResumo(id);
+}
+
+function mostrarLeitura() {
+  document.getElementById('leituraQuem').textContent = resumoQuem || resumoAberto.titulo;
+  document.getElementById('leituraData').textContent = fmtData(dataDoTitulo(resumoAberto.titulo));
+  document.getElementById('leituraTexto').textContent = resumoAberto.texto;
+  document.getElementById('leituraLink').href = resumoAberto.url;
+  document.getElementById('leitura').classList.add('aberto');
+  window.scrollTo(0, 0);
+}
+
+/* O nome do arquivo é a data. Se não for reconhecível, o cabeçalho fica sem ela em vez
+   de mostrar um nome de arquivo cru onde deveria haver um dia. */
+function dataDoTitulo(titulo) {
+  var iso = String(titulo).match(/\d{4}-\d{2}-\d{2}/);
+  return iso ? iso[0] : '';
+}
+
+function fecharResumo() {
+  resumoAberto = null;
+  resumoQuem = '';
+  document.getElementById('leitura').classList.remove('aberto');
+  desenhar();
+}
+
+function filtrarPessoa(v) { filtroPessoa = v; desenhar(); }
+function filtrarTipo(v)   { filtroTipo = v; desenhar(); }
+function filtrarValor(v)  { filtroValor = (filtroValor === v ? '' : v); desenhar(); }
+
+/* ==========================================================================
+   UTILITÁRIOS
+   ========================================================================== */
+/* Título e demais textos vêm da planilha — nada entra no DOM sem escapar. */
+function esc(valor) {
+  var mapa = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  return String(valor == null ? '' : valor).replace(/[&<>"']/g, function (ch) { return mapa[ch]; });
+}
+
+function mensagem(err) { return err && err.message ? err.message : String(err); }
+
+/* ISO → dd/mm/yyyy por fatiamento de string. Nada de new Date(iso): o parser trataria
+   "2026-08-02" como UTC e, em fuso negativo, exibiria 01/08. */
+function fmtData(iso) {
+  var partes = String(iso).slice(0, 10).split('-');
+  return partes.length === 3 ? partes[2] + '/' + partes[1] + '/' + partes[0] : '';
+}
+
+function fmtDataHora(iso) {
+  if (!iso) return '—';
+  var hora = String(iso).slice(11, 16);
+  return hora ? fmtData(iso) + ' às ' + hora : fmtData(iso);
+}
+
+function fmtDiaMes(ms) {
+  var d = new Date(ms);
+  return dois(d.getUTCDate()) + '/' + dois(d.getUTCMonth() + 1);
+}
+
+/* Comparação de prazo é feita entre strings ISO, que ordenam sozinhas — assim nenhuma
+   data do contrato precisa passar por new Date() e por um fuso. */
+function hojeIso() {
+  var d = new Date();
+  return d.getFullYear() + '-' + dois(d.getMonth() + 1) + '-' + dois(d.getDate());
+}
+
+function isoMenosDias(dias) { return isoMaisDias(-dias); }
+
+function isoMaisDias(dias) {
+  var d = new Date();
+  d.setDate(d.getDate() + dias);
+  return d.getFullYear() + '-' + dois(d.getMonth() + 1) + '-' + dois(d.getDate());
+}
+
+/* ISO → milissegundos em UTC. O Gantt só compara e posiciona datas entre si, então UTC
+   evita que horário de verão encolha ou estique um dia no meio da escala. */
+function msDeIso(iso) {
+  var p = String(iso).slice(0, 10).split('-');
+  return p.length === 3 ? Date.UTC(p[0], p[1] - 1, p[2]) : NaN;
+}
+
+/* Diferença em dias. Mesmo motivo do msDeIso: subtrair dois horários locais pode dar
+   23 ou 25 horas e truncar para o dia errado. */
+function diasEntre(isoA, isoB) {
+  var a = msDeIso(isoA), b = msDeIso(isoB);
+  return isNaN(a) || isNaN(b) ? null : Math.round((b - a) / MS_DIA);
+}
+
+function dois(n) { return (n < 10 ? '0' : '') + n; }
+
+/* "id1,id2" → "Lucas, Viviane". Id que não resolve aparece como está, em vez de sumir:
+   dado órfão visível é problema; dado órfão escondido é problema que ninguém acha. */
+function nomesDeIds(csv) {
+  return idsDeCsv(csv)
+    .map(function (id) { return pessoasPorId[id] ? pessoasPorId[id].nome : id; })
+    .join(', ');
+}
+
+function idsDeCsv(csv) {
+  return String(csv || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+}
+
+function idsMarcadosEm(seletor) {
+  return Array.prototype.slice.call(document.querySelectorAll(seletor + ' input:checked'))
+    .map(function (el) { return el.value; }).join(',');
+}
+
+function marcarNo(seletor, csv) {
+  var marcados = idsDeCsv(csv);
+  Array.prototype.slice.call(document.querySelectorAll(seletor + ' input'))
+    .forEach(function (el) { el.checked = marcados.indexOf(el.value) >= 0; });
+}
+
+/* ==========================================================================
+   SINCRONIZAÇÃO (inbox do Drive)
+   ========================================================================== */
+function sincronizar() {
+  botaoSincronizar(true);
+  document.getElementById('avisoSync').innerHTML = '';
+
+  google.script.run
+    .withSuccessHandler(aoSincronizar)
+    .withFailureHandler(aoFalharSincronizar)
+    .processarInbox();
+}
+
+function aoSincronizar(r) {
+  botaoSincronizar(false);
+  document.getElementById('avisoSync').innerHTML =
+    '<div class="aviso' + (r.erros ? '' : ' ok') + '">' + esc(resumoDaSincronia(r)) + '</div>';
+
+  /* A sincronia cria card e anotação: recarrega os dois, senão a tela continua mostrando
+     um retrato de antes do que acabou de entrar. */
+  recarregarTudo();
+}
+
+function aoFalharSincronizar(err) {
+  botaoSincronizar(false);
+  document.getElementById('avisoSync').innerHTML =
+    '<div class="aviso">Não foi possível sincronizar: ' + esc(mensagem(err)) + '</div>';
+}
+
+function resumoDaSincronia(r) {
+  if (r.ocupado) {
+    return 'Uma sincronização já estava em andamento — nada foi feito agora. ' +
+           'Tente de novo em alguns segundos.';
+  }
+
+  var total = r.processados + r.ignorados + r.erros;
+  if (!total) return 'Inbox vazio — nenhum arquivo para processar.';
+
+  var partes = [r.processados + (r.processados === 1 ? ' registro criado' : ' registros criados')];
+  if (r.ignorados) partes.push(r.ignorados + ' já processado(s) antes');
+  if (r.erros) partes.push(r.erros + ' com erro (ver a pasta erros/ e a aba Log)');
+
+  var texto = partes.join(' · ') + '.';
+  /* Teto por rodada é limite real, não detalhe interno: sem dizer, "3 criados" passaria a
+     impressão de que o inbox esvaziou. */
+  if (r.restantes) texto += ' Ainda há arquivos no inbox — sincronize de novo.';
+  return texto;
+}
+
+function botaoSincronizar(ocupado) {
+  var btn = document.getElementById('btnSincronizar');
+  btn.disabled = ocupado;
+  btn.innerHTML = '<span>' + (ocupado ? 'Sincronizando…' : 'Sincronizar') + '</span>';
+}
+
+/* ==========================================================================
+   CRIAÇÃO E EDIÇÃO
+   ========================================================================== */
+/* Campos que o formulário expõe. `notion_id` fica de fora: nasce vazio e só é preenchido
+   na migração. Os gerados pela camada nem chegam a ser mencionados — o servidor recusa o
+   payload se vierem. As três datas de transição também não: quem carimba é a camada. */
+var CAMPOS_FORM = [
+  'titulo', 'status', 'prioridade', 'prazo', 'descricao',
+  'aguardando_cliente', 'prazo_cliente', 'pendencia_cliente', 'delegado_para'
+];
+
+function carregarPessoas() {
+  google.script.run
+    .withSuccessHandler(function (lista) {
+      pessoas = lista || [];
+      pessoasAtivas = pessoas.filter(function (p) { return p.ativo; });
+      pessoasPorId = {};
+      pessoas.forEach(function (p) { pessoasPorId[p.id] = p; });
+      montarSeletorDePessoas('');
+      /* A tela traduz id→nome e calcula a fila de 1:1; se as pessoas chegaram depois
+         dos cards, redesenha. */
+      desenhar();
+    })
+    .withFailureHandler(function (err) {
+      document.getElementById('f-delegado_para').innerHTML =
+        '<span class="vazio">Pessoas indisponível: ' + esc(mensagem(err)) + '</span>';
+    })
+    .listPessoas();
+}
+
+function montarSeletorDePessoas(jaNoCard) {
+  document.getElementById('f-delegado_para').innerHTML = caixasDePessoas(jaNoCard);
+}
+
+/**
+ * As caixas de um seletor de pessoas: **ativos, mais quem já está no card.**
+ *
+ * O "mais quem já está" não é cortesia — é o que impede perda de dado. O seletor devolve
+ * quem estiver marcado, então um card delegado a alguém que saiu do time perderia essa
+ * pessoa no primeiro salvamento, sem ninguém pedir e sem nada avisar. Ela volta marcada,
+ * desenhada como resíduo, e desmarcá-la é uma decisão explícita.
+ *
+ * Id que não resolve em pessoa nenhuma também entra, pelo mesmo motivo de o resto da tela
+ * mostrar id órfão em vez de escondê-lo.
+ */
+function caixasDePessoas(jaNoCard) {
+  var presentes = idsDeCsv(jaNoCard);
+
+  var extras = presentes
+    .filter(function (id) {
+      return !pessoasAtivas.some(function (p) { return p.id === id; });
+    })
+    .map(function (id) {
+      return pessoasPorId[id] || { id: id, nome: id };
+    });
+
+  var lista = pessoasAtivas.concat(extras);
+  if (!lista.length) return '<span class="vazio">Nenhuma pessoa ativa cadastrada.</span>';
+
+  return lista.map(function (p) {
+    var inativa = extras.indexOf(p) >= 0;
+    return '<label' + (inativa ? ' class="inativa"' : '') + '>' +
+        '<input type="checkbox" value="' + esc(p.id) + '">' + esc(p.nome) +
+        (inativa ? ' <em>inativo</em>' : '') +
+      '</label>';
+  }).join('');
+}
+
+/* Selects vêm das listas do servidor — as mesmas que validam do outro lado. */
+function popularSelects() {
+  document.getElementById('f-status').innerHTML = STATUS_COLUNAS.map(function (s) {
+    return '<option value="' + esc(s) + '"' + (s === STATUS_PADRAO_UI ? ' selected' : '') +
+           '>' + esc(s) + '</option>';
+  }).join('');
+
+  document.getElementById('f-prioridade').innerHTML =
+    '<option value="">—</option>' + PRIORIDADES.map(function (p) {
+      return '<option value="' + esc(p) + '">' + esc(p) + '</option>';
+    }).join('');
+}
+
+function abrirModal() {
+  idEmEdicao = null;
+  prepararModal('Novo card', '');
+  /* Remontado a cada abertura: card novo só oferece ativos, e a montagem já nasce
+     desmarcada — reset() do form não desmarca checkbox criado por JS. */
+  montarSeletorDePessoas('');
+}
+
+/* Abre o mesmo modal preenchido com o card. Os valores vêm da última carga: o servidor já
+   entregou tudo no formato que os campos usam, inclusive as datas em yyyy-MM-dd. */
+function abrirEdicao(id) {
+  var card = cardsPorId[id];
+  if (!card) return;
+
+  idEmEdicao = id;
+  prepararModal('Editar card',
+    'Criado em ' + fmtDataHora(card.criado_em) +
+    '<br>Atualizado em ' + fmtDataHora(card.atualizado_em));
+
+  CAMPOS_FORM.forEach(function (campo) {
+    /* Remonta antes de marcar: quem já está no card entra na lista mesmo inativo, senão
+       a caixa não existiria e o salvamento apagaria a delegação. */
+    if (campo === 'delegado_para') {
+      montarSeletorDePessoas(card.delegado_para);
+      return marcarNo('#f-delegado_para', card.delegado_para);
+    }
+    var el = document.getElementById('f-' + campo);
+    if (el.type === 'checkbox') el.checked = card[campo] === true;
+    else el.value = card[campo] || '';
+  });
+}
+
+function prepararModal(titulo, carimbos) {
+  document.getElementById('erroForm').innerHTML = '';
+  document.getElementById('formCard').reset();
+  document.getElementById('tituloModal').textContent = titulo;
+  document.getElementById('carimbos').innerHTML = carimbos;
+  botaoSalvar(false);
+  document.getElementById('overlay').classList.add('aberto');
+  document.getElementById('f-titulo').focus();
+}
+
+function fecharModal() {
+  document.getElementById('overlay').classList.remove('aberto');
+}
+
+function cliqueForaFecha(ev) {
+  if (ev.target.id === 'overlay') fecharModal();
+}
+
+document.addEventListener('keydown', function (ev) {
+  if (ev.key === 'Escape') { fecharModal(); cancelarDelegacao(); fecharResumo(); return; }
+
+  /* "/" foca a busca, como em quase todo app de lista. Não sequestra a tecla enquanto
+     alguém está digitando em outro campo. */
+  var alvo = ev.target.tagName;
+  if (ev.key === '/' && alvo !== 'INPUT' && alvo !== 'TEXTAREA' && visao === 'board') {
+    ev.preventDefault();
+    document.getElementById('busca').focus();
+  }
+});
+
+/* input[type=date] já entrega yyyy-MM-dd — o formato de transporte do contrato. */
+function montarPayload() {
+  var payload = {};
+  CAMPOS_FORM.forEach(function (campo) {
+    if (campo === 'delegado_para') { payload[campo] = idsMarcadosEm('#f-delegado_para'); return; }
+    var el = document.getElementById('f-' + campo);
+    payload[campo] = el.type === 'checkbox' ? el.checked : el.value;
+  });
+  return payload;
+}
+
+function salvar(ev) {
+  ev.preventDefault();
+  /* Metade da defesa contra escrita duplicada; a outra é o LockService no servidor. */
+  botaoSalvar(true);
+  document.getElementById('erroForm').innerHTML = '';
+
+  var runner = google.script.run
+    .withSuccessHandler(aoSalvar)
+    .withFailureHandler(aoFalharSalvar);
+
+  /* O formulário manda os nove campos sempre, então a edição sobrescreve todos eles —
+     inclusive apagando os que ficaram em branco, que é a convenção de patch do contrato. */
+  if (idEmEdicao) runner.updateCard(idEmEdicao, montarPayload());
+  else runner.createCard(montarPayload());
+}
+
+function aoSalvar() {
+  botaoSalvar(false);
+  fecharModal();
+  carregar();
+}
+
+/* Modal continua aberto com o que foi digitado: o erro é para corrigir, não para recomeçar. */
+function aoFalharSalvar(err) {
+  botaoSalvar(false);
+  document.getElementById('erroForm').innerHTML =
+    '<div class="erro-form">' + esc(mensagem(err)) + '</div>';
+}
+
+function botaoSalvar(ocupado) {
+  var btn = document.getElementById('btnSalvar');
+  btn.disabled = ocupado;
+  btn.textContent = ocupado ? 'Salvando…' : (idEmEdicao ? 'Salvar' : 'Criar card');
+}
+
+popularSelects();
+carregarPessoas();
+carregar();
+</script>
+</body>
+</html>

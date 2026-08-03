@@ -1,0 +1,9 @@
+{
+  "tipo": "card",
+  "payload": {
+    "titulo": "Card que entrou pelo inbox",
+    "prioridade": "Alta",
+    "descricao": "Largado como arquivo em mock/inbox/ e recolhido pelo processarInbox.",
+    "prazo": "2026-12-31"
+  }
+}
