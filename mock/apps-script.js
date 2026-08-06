@@ -233,17 +233,34 @@ function formatDate(data, tz, formato) {
 }
 
 /**
+ * Uma loja de propriedades sobre um objeto simples.
+ *
+ * `deleteProperty` existe porque o projeto usa: ausente e vazio precisam significar a
+ * mesma coisa na preferência de tema, e um dublê que só soubesse `setProperty` esconderia
+ * a diferença até a hora de rodar no Google.
+ */
+function lojaDePropriedades(loja) {
+  return {
+    getProperty: (k) => (k in loja ? loja[k] : null),
+    setProperty(k, v) { loja[k] = String(v); return this; },
+    deleteProperty(k) { delete loja[k]; return this; },
+  };
+}
+
+/**
  * Monta os globais que o projeto espera.
  *
  * @param {Object} opcoes
- * @param {boolean} opcoes.lockOcupado  faz todo tryLock devolver false
- * @param {Object}  opcoes.propriedades Script Properties iniciais
- * @param {Object}  opcoes.pastas       nome → pasta fake, para o DriveApp
+ * @param {boolean} opcoes.lockOcupado           faz todo tryLock devolver false
+ * @param {Object}  opcoes.propriedades          Script Properties iniciais
+ * @param {Object}  opcoes.propriedadesDoUsuario User Properties iniciais
+ * @param {Object}  opcoes.pastas                nome → pasta fake, para o DriveApp
  */
 function criarAmbiente(opcoes = {}) {
   const ss = criarSpreadsheet(opcoes);
   const logs = [];
   const propriedades = Object.assign({}, opcoes.propriedades);
+  const propriedadesDoUsuario = Object.assign({}, opcoes.propriedadesDoUsuario);
   const pastasPorId = {};
   /* Registra a pasta e as subpastas dela: o getFolderById precisa achar qualquer uma, e
      a estrutura de Resumos é raiz → pessoa → Docs. */
@@ -290,11 +307,13 @@ function criarAmbiente(opcoes = {}) {
       getScriptLock: () => criarLock('script'),
       getUserLock: () => criarLock('user'),
     },
+    /* Duas lojas separadas, como no Apps Script de verdade: as do script são
+       configuração da instalação (IDs de pasta), as do usuário são preferência de quem
+       abriu (tema). Compartilhar um objeto entre as duas faria o dublê aceitar código que
+       lê de uma e escreve na outra — e no Google isso devolve null. */
     PropertiesService: {
-      getScriptProperties: () => ({
-        getProperty: (k) => (k in propriedades ? propriedades[k] : null),
-        setProperty(k, v) { propriedades[k] = v; return this; },
-      }),
+      getScriptProperties: () => lojaDePropriedades(propriedades),
+      getUserProperties: () => lojaDePropriedades(propriedadesDoUsuario),
     },
     DriveApp: {
       getFolderById(id) {

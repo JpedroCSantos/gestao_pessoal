@@ -9,6 +9,65 @@
 const PROP_PAINEL = 'PAINEL_FOLDER_ID';
 
 /**
+ * Preferência de tema, em UserProperties.
+ *
+ * **Não é `localStorage`.** O `/exec` é servido dentro de um iframe de sandbox em outra
+ * origem, e o particionamento de armazenamento de terceiros dos navegadores atuais pode
+ * bloquear ou isolar aquele storage — o sintoma seria o tema voltando ao padrão a cada
+ * carregamento, sem erro nenhum para investigar. UserProperties é do usuário logado, é
+ * confiável, e ainda atravessa máquina.
+ *
+ * `PropertiesService` não pede escopo OAuth, então nada muda no `appsscript.json` — o que
+ * importa, com a detecção automática desligada.
+ */
+const PROP_TEMA = 'TEMA';
+
+/** Os únicos valores que atravessam. `''` significa "acompanha o sistema". */
+const TEMAS = ['', 'claro', 'escuro'];
+
+/**
+ * A preferência gravada, saneada.
+ *
+ * O `Index.html` injeta isto num atributo com `<?!= ?>`, que **não escapa**. Devolver só
+ * valor da lista fechada é o que torna isso seguro: qualquer outra coisa — inclusive lixo
+ * de uma versão antiga da propriedade — vira `''` em vez de sair como markup.
+ *
+ * @return {string} `''`, `'claro'` ou `'escuro'`.
+ */
+function temaSalvo() {
+  const salvo = String(
+    PropertiesService.getUserProperties().getProperty(PROP_TEMA) || ''
+  ).trim();
+  return TEMAS.indexOf(salvo) >= 0 ? salvo : '';
+}
+
+/**
+ * Grava a preferência de tema.
+ *
+ * @param {string} tema `''` (acompanha o sistema), `'claro'` ou `'escuro'`.
+ * @return {string} O que ficou gravado.
+ * @throws ErroValidacao para qualquer outro valor.
+ */
+function salvarTema(tema) {
+  const alvo = String(tema == null ? '' : tema).trim();
+  if (TEMAS.indexOf(alvo) < 0) {
+    throw erro_(
+      ERRO_VALIDACAO,
+      'tema "' + alvo + '" não existe. Aceitos: "claro", "escuro", ou vazio para ' +
+      'acompanhar o sistema.'
+    );
+  }
+
+  // deleteProperty e não setProperty(''): propriedade vazia e propriedade ausente têm que
+  // significar a mesma coisa, e guardar as duas formas é convidar um `if` a mais depois.
+  const props = PropertiesService.getUserProperties();
+  if (alvo) props.setProperty(PROP_TEMA, alvo);
+  else props.deleteProperty(PROP_TEMA);
+
+  return alvo;
+}
+
+/**
  * `?view=` aceito → arquivo na pasta de painéis. Lista fechada, e é ela que fecha a rota.
  *
  * **Não há `dia`.** Ele existia enquanto o painel do dia era escrito por uma skill; quando o

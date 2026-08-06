@@ -132,16 +132,35 @@ function ensinarHtmlService(projeto) {
  */
 function resolverScriptlets(fonte, projeto) {
   return fonte.replace(/<\?!=\s*([\s\S]*?)\s*\?>/g, (todo, expressao) => {
-    const achado = expressao.match(/^JSON\.stringify\(\s*([A-Za-z_$][\w$]*)\s*\)$/);
-    if (!achado) {
-      throw new Error('mock: scriptlet não suportado — ' + todo);
+    const constante = expressao.match(/^JSON\.stringify\(\s*([A-Za-z_$][\w$]*)\s*\)$/);
+    if (constante) return JSON.stringify(valorDoProjeto(projeto, constante[1], todo));
+
+    const chamada = expressao.match(/^([A-Za-z_$][\w$]*)\(\s*\)$/);
+    if (chamada) {
+      const fn = valorDoProjeto(projeto, chamada[1], todo);
+      if (typeof fn !== 'function') {
+        throw new Error('mock: o scriptlet chama "' + chamada[1] + '", que não é função.');
+      }
+      return String(fn());
     }
-    const nome = achado[1];
-    if (!(nome in projeto)) {
-      throw new Error('mock: o scriptlet pede "' + nome + '", que o projeto não declara.');
-    }
-    return JSON.stringify(projeto[nome]);
+
+    throw new Error('mock: scriptlet não suportado — ' + todo);
   });
+}
+
+/**
+ * O nome global que o scriptlet pede, ou erro.
+ *
+ * A gramática continua fechada — constante via `JSON.stringify(X)` e função sem argumento
+ * via `X()`, nada além. Scriptlet que vaza para o HTML é bug que só aparece quando alguém
+ * lê o fonte da página, então o desconhecido levanta erro em vez de sair como texto.
+ */
+function valorDoProjeto(projeto, nome, todo) {
+  if (!(nome in projeto)) {
+    throw new Error(
+      'mock: o scriptlet ' + todo + ' pede "' + nome + '", que o projeto não declara.');
+  }
+  return projeto[nome];
 }
 
 /* ==========================================================================

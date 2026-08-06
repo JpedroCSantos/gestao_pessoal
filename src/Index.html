@@ -1,11 +1,49 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<!-- `data-tema-pref` é a PREFERÊNCIA gravada no servidor: '' (acompanha o sistema),
+     'claro' ou 'escuro'. `data-tema` é o resultado concreto, e é só nele que o CSS
+     encosta. Vem do servidor e não de uma chamada assíncrona porque o tema tem que
+     estar decidido antes da primeira pintura — `google.script.run` só responde depois
+     dela, e o efeito seria a tela piscar branca a cada carregamento. -->
+<html lang="pt-br" data-tema-pref="<?!= temaSalvo() ?>">
 <head>
 <meta charset="utf-8">
+
+<script>
+/*
+ * Resolve a preferência em claro/escuro, síncrono e antes do <body>.
+ *
+ * Existe para o CSS ter UM bloco de tema escuro em vez de dois: sem esta resolução, o
+ * caso "acompanha o sistema" precisaria repetir a paleta inteira dentro de um
+ * `@media (prefers-color-scheme: dark)`, e a segunda cópia sairia de sincronia.
+ */
+(function () {
+  var raiz = document.documentElement;
+  var consulta = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+
+  function aplicar() {
+    var pref = raiz.getAttribute('data-tema-pref') || '';
+    var escuro = pref ? pref === 'escuro' : !!(consulta && consulta.matches);
+    raiz.setAttribute('data-tema', escuro ? 'escuro' : 'claro');
+    /* Na primeira execução o botão ainda não existe — este script roda antes do <body>.
+       A guarda serve para a reação ao sistema, que acontece com a tela já montada. */
+    if (window.pintarBotaoTema) window.pintarBotaoTema();
+  }
+  aplicar();
+
+  /* Só reage ao sistema enquanto não houver escolha explícita — o `aplicar` relê a
+     preferência, então trocar o tema à mão desliga esta reação sem mais nenhum estado. */
+  if (consulta && consulta.addEventListener) consulta.addEventListener('change', aplicar);
+})();
+</script>
+
 <style>
 /* ==========================================================================
    TOKENS — base do model-app (indigo sobre cinza, radius 12, sombra discreta),
    com as cores de estado dos painéis do Notion, que já são o vocabulário dele.
+
+   NENHUMA cor literal fora deste bloco. É a condição que faz o tema escuro ser
+   uma troca de valores em vez de uma varredura pelo arquivo, e é a regra que
+   quebra primeiro quando alguém acrescenta um `#hex` no meio de uma regra.
    ========================================================================== */
 :root {
   --primary: #6366f1; --primary-dark: #4f46e5; --primary-soft: #eef2ff;
@@ -13,9 +51,16 @@
   --text: #1f2937; --muted: #6b7280; --sutil: #9ca3af;
   --ok: #059669; --warn: #d97706; --bad: #dc2626;
 
+  /* Texto/ícone que fica SOBRE cor saturada (badge, botão primário, marca do agora).
+     Existe porque no claro é branco e no escuro precisa ser escuro: as cores de estado
+     clareiam no tema escuro, e branco sobre `#f87171` não passa de contraste. */
+  --sobre-cor: #ffffff;
+
   --radius: 12px; --radius-sm: 8px;
   --shadow: 0 1px 3px rgba(16,24,40,.06), 0 1px 2px rgba(16,24,40,.04);
   --shadow-md: 0 4px 12px rgba(16,24,40,.10), 0 2px 4px rgba(16,24,40,.06);
+  --shadow-modal: 0 20px 50px rgba(16,24,40,.22);
+  --overlay: rgba(17,24,39,.42);
 
   --s-not-started: #6b7280; --s-not-started-bg: #f3f4f6;
   --s-in-progress: #3b6591; --s-in-progress-bg: #e8f0fa;
@@ -27,7 +72,65 @@
   --p-media: #a86a00; --p-media-bg: #fef6e0;
   --p-baixa: #1e8449; --p-baixa-bg: #e9f7ee;
 
+  --marca-2: #8b5cf6;                                  /* fim do gradiente da marca */
+  --veredito-bg2: #f5f3ff; --veredito-borda: #ddd6fe;   /* o cartão de veredito do Hoje */
+  --vao-a: #f0fdf4; --vao-b: #ecfdf5;                   /* hachura do vão da agenda */
+  --vao-borda: #86efac; --vao-txt: #15803d;
+  --espera-a: #e5e7eb; --espera-b: #f3f4f6;             /* hachura do trecho de espera do Gantt */
+  --erro-bg: #fef2f2; --erro-borda: #fecaca; --erro-txt: #991b1b;
+
+  /* Só os componentes, sem `rgb()`: o mapa de calor das anotações monta a cor no JS com
+     alfa variável, e `rgba(var(--heat-rgb), .4)` é a única forma de um token participar
+     disso. Trocar por um hex aqui reintroduz a cor literal no JS. */
+  --heat-rgb: 99,102,241;
+
   --lateral: 216px;
+}
+
+/* ==========================================================================
+   TEMA ESCURO — um bloco só, e por isso o `auto` é resolvido antes do CSS.
+
+   O seletor é `[data-tema="escuro"]` e nada mais: quem decide entre claro e escuro
+   quando a preferência é "acompanhar o sistema" é o script do <head>, que grava o
+   valor concreto no <html> antes da primeira pintura. A alternativa — repetir estes
+   valores dentro de um `@media (prefers-color-scheme: dark)` — significaria duas
+   cópias da paleta, e a segunda sai de sincronia no primeiro ajuste.
+
+   Cinza-azulado, não preto: a tela se apoia em superfícies empilhadas (lateral sobre
+   fundo, card sobre fundo), e sobre preto puro a sombra desaparece e a pilha achata.
+   A relação se mantém invertida igual ao claro — `--surface` mais claro que `--bg`.
+   ========================================================================== */
+:root[data-tema="escuro"] {
+  --primary: #818cf8; --primary-dark: #a5b4fc; --primary-soft: #1f2138;
+  --bg: #0f1115; --surface: #171a21; --border: #262b36; --border-forte: #39414f;
+  --text: #e6e8ec; --muted: #9aa3b2; --sutil: #6f7787;
+  --ok: #34d399; --warn: #fbbf24; --bad: #f87171;
+
+  --sobre-cor: #14161c;
+
+  --shadow: 0 1px 3px rgba(0,0,0,.5), 0 1px 2px rgba(0,0,0,.34);
+  --shadow-md: 0 4px 14px rgba(0,0,0,.52), 0 2px 6px rgba(0,0,0,.36);
+  --shadow-modal: 0 20px 50px rgba(0,0,0,.62);
+  --overlay: rgba(3,5,9,.66);
+
+  --s-not-started: #9aa3b2; --s-not-started-bg: #21252e;
+  --s-in-progress: #7fb0e8; --s-in-progress-bg: #16222f;
+  --s-done: #4ecb8a;        --s-done-bg: #12241a;
+  --s-delegado: #e0a06a;    --s-delegado-bg: #2a1e14;
+  --s-sem: #6f7787;         --s-sem-bg: #1c1f27;
+
+  --p-alta: #f28b82;  --p-alta-bg: #2b1616;
+  --p-media: #e8c168; --p-media-bg: #2a2110;
+  --p-baixa: #6ed49b; --p-baixa-bg: #13251b;
+
+  --marca-2: #a78bfa;
+  --veredito-bg2: #241f3d; --veredito-borda: #3b3566;
+  --vao-a: #10241a; --vao-b: #0e1f17;
+  --vao-borda: #2f6b48; --vao-txt: #6ed49b;
+  --espera-a: #262b36; --espera-b: #1c2027;
+  --erro-bg: #2a1416; --erro-borda: #4d2226; --erro-txt: #f0a1a1;
+
+  --heat-rgb: 129,140,248;
 }
 
 * { box-sizing: border-box; }
@@ -53,7 +156,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .lateral-topo { display: flex; align-items: center; gap: 9px; padding: 14px 14px 10px; }
 .marca-ponto {
   width: 24px; height: 24px; border-radius: 7px; flex: none;
-  background: linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--marca-2) 100%);
 }
 .marca-nome { font-weight: 650; letter-spacing: -.01em; }
 .recolher {
@@ -73,7 +176,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .menu-item.ativa { background: var(--primary-soft); color: var(--primary-dark); }
 .menu-ico { width: 18px; text-align: center; flex: none; font-size: 15px; }
 .menu-sino {
-  margin-left: auto; font-size: 11px; font-weight: 700; background: var(--bad); color: #fff;
+  margin-left: auto; font-size: 11px; font-weight: 700; background: var(--bad); color: var(--sobre-cor);
   border-radius: 20px; padding: 0 6px; min-width: 18px; text-align: center;
 }
 .lateral-pe { margin-top: auto; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
@@ -83,6 +186,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .app.compacta .marca-nome,
 .app.compacta .menu-item span:not(.menu-ico):not(.menu-sino),
 .app.compacta .lateral-pe .btn span { display: none; }
+/* Exceção ao de cima: ícone de botão do pé sobrevive ao recolhimento. Sem isto o botão
+   de tema viraria um retângulo vazio — o mesmo estado em que Sincronizar e Recarregar
+   já ficam hoje, e que só o `title` salva. */
+.app.compacta .lateral-pe .btn .btn-ico { display: inline; }
 .app.compacta .menu-item { justify-content: center; padding: 9px 0; }
 .app.compacta .lateral-topo { flex-direction: column; gap: 6px; padding: 14px 0 10px; }
 .app.compacta .recolher { margin: 0; }
@@ -120,7 +227,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .btn:hover:not(:disabled) { background: var(--bg); border-color: var(--border-forte); }
 .btn:disabled { opacity: .55; cursor: default; }
-.btn-primario { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn .btn-ico { margin-right: 6px; font-size: 14px; line-height: 1; }
+.app.compacta .lateral-pe .btn .btn-ico { margin-right: 0; }
+.btn-primario { background: var(--primary); border-color: var(--primary); color: var(--sobre-cor); }
 .btn-primario:hover:not(:disabled) { background: var(--primary-dark); border-color: var(--primary-dark); }
 
 /* ============================ AVISOS ===================================== */
@@ -179,7 +288,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .bloco-cab .n {
   font-size: 11px; font-weight: 700; border-radius: 20px; padding: 0 7px;
-  background: currentColor; color: #fff; letter-spacing: 0;
+  background: currentColor; color: var(--sobre-cor); letter-spacing: 0;
 }
 .bloco-cab .n span { filter: none; }
 .bloco.b-vencido .bloco-cab { color: var(--bad); }
@@ -233,8 +342,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .dias-fora { font-size: 11px; color: var(--bad); font-weight: 600; flex: none; }
 
 .um-a-um {
-  background: linear-gradient(135deg, var(--primary-soft) 0%, #f5f3ff 100%);
-  border: 1px solid #ddd6fe; border-radius: var(--radius); padding: 14px 16px;
+  background: linear-gradient(135deg, var(--primary-soft) 0%, var(--veredito-bg2) 100%);
+  border: 1px solid var(--veredito-borda); border-radius: var(--radius); padding: 14px 16px;
 }
 .um-a-um .quem { font-size: 16px; font-weight: 650; margin: 3px 0; }
 .um-a-um .obs { font-size: 12.5px; color: var(--muted); }
@@ -400,10 +509,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* O vão é o produto deste formato: é ele que responde "onde o trabalho cabe". */
 .ag-vao {
   position: absolute; left: 0; right: 0; border-radius: 6px;
-  background: repeating-linear-gradient(135deg, #f0fdf4 0 6px, #ecfdf5 6px 12px);
-  border: 1px dashed #86efac; display: flex; align-items: center; justify-content: center;
+  background: repeating-linear-gradient(135deg, var(--vao-a) 0 6px, var(--vao-b) 6px 12px);
+  border: 1px dashed var(--vao-borda); display: flex; align-items: center; justify-content: center;
 }
-.ag-vao span { font-size: 10px; font-weight: 600; color: #15803d; }
+.ag-vao span { font-size: 10px; font-weight: 600; color: var(--vao-txt); }
 .ag-bloco {
   position: absolute; border-radius: 7px; padding: 4px 7px; overflow: hidden;
   background: var(--primary-soft); border-left: 3px solid var(--primary);
@@ -418,7 +527,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .ag-bloco span { font-size: 9.5px; color: var(--sutil); font-variant-numeric: tabular-nums; }
 .ag-agora { position: absolute; left: -40px; right: 0; height: 2px; background: var(--bad); z-index: 3; }
 .ag-agora b {
-  position: absolute; left: -2px; top: -8px; font-size: 9px; color: #fff;
+  position: absolute; left: -2px; top: -8px; font-size: 9px; color: var(--sobre-cor);
   background: var(--bad); padding: 1px 4px; border-radius: 4px; font-weight: 600;
 }
 
@@ -445,13 +554,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .gt-grade { position: absolute; inset: 0; pointer-events: none; }
 .gt-hoje { position: absolute; top: 30px; bottom: 0; width: 2px; background: var(--bad); z-index: 2; }
 .gt-hoje b {
-  position: absolute; top: -22px; left: -16px; font-size: 10px; color: #fff;
+  position: absolute; top: -22px; left: -16px; font-size: 10px; color: var(--sobre-cor);
   background: var(--bad); padding: 1px 5px; border-radius: 4px; font-weight: 600;
 }
 .gt-bar { position: absolute; top: 8px; height: 16px; border-radius: 5px; display: flex; overflow: hidden; }
 /* Dois segmentos: o tempo esperando e o tempo em execução. Sem isso o Gantt mostraria
    4 dos 20 ativos — `data_inicio` só é carimbada ao entrar em In progress. */
-.gt-espera { background: repeating-linear-gradient(135deg, #e5e7eb 0 5px, #f3f4f6 5px 10px); }
+.gt-espera { background: repeating-linear-gradient(135deg, var(--espera-a) 0 5px, var(--espera-b) 5px 10px); }
 .gt-exec-in-progress { background: var(--s-in-progress); }
 .gt-exec-delegado    { background: var(--s-delegado); }
 .gt-exec-not-started { background: var(--s-not-started); }
@@ -581,11 +690,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* ============================ MODAL ====================================== */
 .overlay {
   display: none; position: fixed; inset: 0; z-index: 50;
-  background: rgba(17,24,39,.42); padding: 24px; overflow-y: auto;
+  background: var(--overlay); padding: 24px; overflow-y: auto;
 }
 .overlay.aberto { display: flex; align-items: flex-start; justify-content: center; }
 .modal {
-  background: var(--surface); border-radius: 14px; box-shadow: 0 20px 50px rgba(16,24,40,.22);
+  background: var(--surface); border-radius: 14px; box-shadow: var(--shadow-modal);
   width: 100%; max-width: 560px; margin: auto;
 }
 .modal.estreito { max-width: 380px; }
@@ -633,7 +742,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .pessoas label.inativa { border-style: dashed; color: var(--muted); }
 .pessoas label.inativa em { font-style: normal; font-size: 10.5px; color: var(--sutil); }
 .erro-form {
-  background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
+  background: var(--erro-bg); border: 1px solid var(--erro-borda); color: var(--erro-txt);
   padding: 9px 12px; border-radius: 8px; font-size: 13px;
 }
 
@@ -687,6 +796,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
         <span>Sincronizar</span></button>
       <button class="btn" id="btnRecarregar" onclick="recarregarTudo()" title="Recarregar">
         <span>Recarregar</span></button>
+      <!-- O glifo tem classe própria porque a regra de recolhido esconde todo <span> dos
+           botões do pé. Só o rótulo some; o ícone sobrevive e o botão continua legível. -->
+      <button class="btn" id="btnTema" onclick="alternarTema()"><span class="btn-ico"
+        id="btnTemaIco">&#9789;</span><span id="btnTemaTxt">Tema escuro</span></button>
     </div>
   </aside>
 
@@ -934,6 +1047,46 @@ function alternarLateral() {
   var btn = document.getElementById('btnRecolher');
   btn.innerHTML = compacta ? '&#9654;' : '&#9664;';
   btn.title = compacta ? 'Expandir menu' : 'Recolher menu';
+}
+
+/* ==========================================================================
+   TEMA
+
+   Duas coisas separadas: o que está na tela agora (`data-tema`) e o que fica
+   guardado (`data-tema-pref`). O script do <head> resolve a primeira a partir da
+   segunda; daqui para baixo é só a troca e o registro.
+   ========================================================================== */
+
+/* Troca o tema na hora e grava a preferência depois — nesta ordem.
+   A escrita passa pelo `google.script.run` e leva uns décimos; esperar por ela para só
+   então pintar deixaria o clique sem resposta. E se a gravação falhar, o tema da sessão
+   continua certo: o que se perde é a memória, não o efeito, e o aviso diz isso. */
+function alternarTema() {
+  var raiz = document.documentElement;
+  var escuro = raiz.getAttribute('data-tema') !== 'escuro';
+  var pref = escuro ? 'escuro' : 'claro';
+
+  raiz.setAttribute('data-tema-pref', pref);
+  raiz.setAttribute('data-tema', pref);
+  pintarBotaoTema();
+
+  google.script.run
+    .withFailureHandler(function (err) {
+      document.getElementById('aviso').innerHTML =
+        '<div class="aviso">O tema mudou, mas não foi possível guardar a preferência: ' +
+        esc(mensagem(err)) + ' Ela volta ao padrão no próximo carregamento.</div>';
+    })
+    .salvarTema(pref);
+}
+
+/* O botão anuncia o DESTINO, não o estado: no claro ele oferece o escuro. É a convenção
+   que evita a pergunta "isto é o que está ligado ou o que vai acontecer?". */
+function pintarBotaoTema() {
+  var escuro = document.documentElement.getAttribute('data-tema') === 'escuro';
+  document.getElementById('btnTemaIco').innerHTML = escuro ? '&#9788;' : '&#9789;';
+  document.getElementById('btnTemaTxt').textContent = escuro ? 'Tema claro' : 'Tema escuro';
+  document.getElementById('btnTema').title = escuro ? 'Mudar para o tema claro'
+                                                    : 'Mudar para o tema escuro';
 }
 
 function desenhar() {
@@ -1386,12 +1539,16 @@ function veredito(vencidos, hoje, amanha) {
 }
 
 function bloco(titulo, classe, lista, vazio) {
-  /* Prazo é o eixo — ele define em qual bloco o card cai. Dentro do bloco, prioridade é
-     o desempate, e o prazo volta como critério secundário para o vencido mais antigo
-     não ficar atrás de um de ontem só por ser Média. */
+  /* Prazo é o eixo — ele define em qual bloco o card cai. Dentro do bloco: prioridade,
+     status, e o prazo como último desempate.
+     O status entra porque, empatados em urgência, o que já está na mão é o que ele
+     continua; o Delegado no fim é acompanhamento, não execução. O prazo continua sendo
+     o critério final para o vencido de treze dias não ficar atrás do de ontem. */
   var ordenada = lista.slice().sort(function (a, b) {
-    var d = ordemPrioridade(a) - ordemPrioridade(b);
-    return d !== 0 ? d : String(a.prazo || '').localeCompare(String(b.prazo || ''));
+    var p = ordemPrioridade(a) - ordemPrioridade(b);
+    if (p !== 0) return p;
+    var s = ordemStatus(a) - ordemStatus(b);
+    return s !== 0 ? s : porPrazo(a, b);
   });
 
   var corpo = ordenada.length
@@ -1405,11 +1562,50 @@ function bloco(titulo, classe, lista, vazio) {
   '</div>';
 }
 
-/* Ordem dentro do bloco: Alta antes de Média antes de Baixa. Prazo é o eixo, prioridade
-   é o desempate — a mesma regra que o o-que-tenho-hoje usa. */
+/* --------------------------------------------------------------------------
+   CRITÉRIOS DE ORDENAÇÃO
+
+   Três peças usadas pelas listas do Hoje e pelas colunas do board. Ficam juntas
+   porque a diferença entre as duas telas está em QUAIS critérios cada uma compõe,
+   e essa comparação só é legível se as peças estiverem lado a lado.
+   -------------------------------------------------------------------------- */
+
+/* Alta antes de Média antes de Baixa. Prioridade vazia vai para o fim — junto com
+   qualquer valor fora da lista, que a validação da camada não deixa entrar pelo app
+   mas pode existir em linha digitada à mão na planilha. */
 function ordemPrioridade(card) {
   var ordem = { 'Alta': 0, 'Média': 1, 'Baixa': 2 };
   return card.prioridade in ordem ? ordem[card.prioridade] : 3;
+}
+
+/* NÃO é a ordem de STATUS_COLUNAS, e a diferença é proposital: ali a ordem é o fluxo
+   de trabalho (começa em Not started), aqui é a ordem de atenção (começa no que já
+   está aberto). Só serve para desempate nas listas do Hoje — no board o status é a
+   própria coluna, e ordenar por ele lá dentro não faria nada.
+   `Done` está aqui por completude; as listas do Hoje já o excluem antes. */
+function ordemStatus(card) {
+  var ordem = { 'In progress': 0, 'Not started': 1, 'Delegado': 2, 'Done': 3 };
+  return card.status in ordem ? ordem[card.status] : 4;
+}
+
+/* Prazo crescente, com o card SEM prazo no fim.
+   Comparar as strings direto — `(a.prazo || '').localeCompare(...)` — jogaria o card sem
+   data para o começo, porque string vazia é menor que qualquer data. Nas listas do Hoje
+   isso nunca aparecia, já que ali todo card tem prazo por construção; no board, onde a
+   maioria não tem, empurraria o que vence amanhã para baixo do que não tem hora marcada.
+
+   É a mesma regra do `compararPorPrazo_` no servidor, e a repetição é deliberada. Como
+   `Array.prototype.sort` é estável, dava para omitir isto e herdar a ordem que o listCards
+   já entrega — mas aí o desempate do board passaria a depender de um invariante invisível
+   em dois lugares (a ordem de chegada E a estabilidade do sort), e trocar a ordenação do
+   servidor mudaria o board sem nada aqui indicar o porquê. Mesma escolha da validação que
+   a camada faz mesmo tendo dropdown na planilha: a cópia que sempre vale é a que fica. */
+function porPrazo(a, b) {
+  var pa = a.prazo || '', pb = b.prazo || '';
+  if (!pa && !pb) return 0;
+  if (!pa) return 1;
+  if (!pb) return -1;
+  return pa.localeCompare(pb);
 }
 
 function htmlLinha(card) {
@@ -1559,7 +1755,17 @@ function agrupar(lista) {
     var chave = STATUS_COLUNAS.indexOf(card.status) >= 0 ? card.status : SEM_STATUS;
     grupos[chave].push(card);
   });
+
+  /* Prioridade e prazo, sem status: dentro de uma coluna o status é o mesmo em todo card.
+     Ordena aqui e não no htmlColuna porque o recorte de Done filtra depois — e filtro
+     preserva ordem, então uma ordenação só cobre os dois caminhos. */
+  Object.keys(grupos).forEach(function (chave) { grupos[chave].sort(ordemBoard); });
   return grupos;
+}
+
+function ordemBoard(a, b) {
+  var p = ordemPrioridade(a) - ordemPrioridade(b);
+  return p !== 0 ? p : porPrazo(a, b);
 }
 
 function htmlBoard() {
@@ -1749,7 +1955,7 @@ function htmlMatriz(lista) {
       /* Intensidade proporcional ao maior valor da tabela: cor mostra onde a massa
          está mais rápido que número, e o número continua lá para o exato. */
       var alfa = maior ? (n / maior) * 0.5 : 0;
-      var estilo = n ? ' style="background:rgba(99,102,241,' + alfa.toFixed(3) + ')"' : '';
+      var estilo = n ? ' style="background:rgba(var(--heat-rgb),' + alfa.toFixed(3) + ')"' : '';
       return '<td class="celula' + (n ? '' : ' zero') + '"' + estilo + '>' + (n || '·') + '</td>';
     }).join('');
 
@@ -2927,6 +3133,7 @@ function botaoSalvar(ocupado) {
 }
 
 popularSelects();
+pintarBotaoTema();
 carregarPessoas();
 carregar();
 carregarAgenda();
