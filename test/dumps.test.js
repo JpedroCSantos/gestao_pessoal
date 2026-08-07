@@ -185,7 +185,7 @@ test('um envelope de anotação de verdade atravessa o inbox inteiro', () => {
       ERROS_FOLDER_ID: erros.getId(),
     },
   });
-  ctx.setupKanban(); ctx.setupPessoas(); ctx.setupAnotacoes(); ctx.setupLog();
+  ctx.setupKanban(); ctx.setupPessoas(); ctx.setupAnotacoes(); ctx.setupNotas(); ctx.setupLog();
   ctx.importPessoas(PESSOAS.pessoas);
 
   const original = ANOTACOES.anotacoes[0];

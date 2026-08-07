@@ -746,6 +746,214 @@ button, input, select, textarea { font: inherit; color: inherit; }
   padding: 9px 12px; border-radius: 8px; font-size: 13px;
 }
 
+/* ============================ TEMPO ====================================== */
+.tempo-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.tempo-bloco {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 13px 15px; display: flex; flex-direction: column; gap: 3px;
+}
+.tempo-titulo { display: flex; align-items: baseline; gap: 7px; font-size: 12.5px; font-weight: 600; }
+/* O `n` fica ao lado do título, e não no rodapé: mediana sem amostra à vista é número
+   com cara de fato, e esta é a tela onde a amostra é pequena de verdade. */
+.tempo-n { font-size: 10.5px; font-weight: 600; color: var(--sutil); font-variant-numeric: tabular-nums; }
+.tempo-num { font-size: 30px; font-weight: 680; letter-spacing: -.02em; line-height: 1.1; }
+.tempo-num span { font-size: 15px; font-weight: 600; color: var(--sutil); margin-left: 2px; }
+.tempo-faixa { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tempo-vazio { font-size: 13px; color: var(--sutil); padding: 7px 0 5px; }
+.tempo-obs-min { font-size: 11px; color: var(--sutil); margin-top: 4px; }
+.tempo-obs { font-size: 12.5px; color: var(--muted); margin: 12px 0 0; line-height: 1.5; }
+.tempo-obs code {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+  padding: 0 4px; font-size: 11.5px;
+}
+.tempo-longos { margin-top: 12px; }
+.tempo-longos-cab { font-size: 11.5px; font-weight: 650; color: var(--muted); margin: 0 0 6px; }
+.tempo-longo {
+  display: flex; align-items: center; gap: 9px; padding: 6px 11px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); margin-bottom: 5px; font-size: 13px;
+}
+.tempo-longo .txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tempo-longo b { font-variant-numeric: tabular-nums; color: var(--warn); }
+
+/* ========================= ONDE CABE (agenda × fila) ===================== */
+.ag-cabe {
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 3px solid var(--ok); border-radius: var(--radius-sm);
+  padding: 9px 12px; margin-bottom: 10px;
+}
+.cabe-obs { font-size: 10.5px; font-weight: 650; text-transform: uppercase;
+            letter-spacing: .05em; color: var(--sutil); }
+.cabe-quando {
+  font-size: 15px; font-weight: 650; letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 7px;
+}
+.cabe-quando span { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.cabe-card { display: flex; align-items: center; gap: 7px; margin-top: 5px; font-size: 12.5px; }
+.cabe-card .txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cabe-vazio { font-size: 12px; color: var(--sutil); margin-top: 4px; }
+
+/* ============================ COBERTURA ================================== */
+.cob-grade { display: flex; flex-direction: column; gap: 4px; }
+.cob-cab, .cob-linha {
+  display: grid; grid-template-columns: minmax(0, 1fr) repeat(5, 62px);
+  align-items: center; gap: 5px;
+}
+.cob-cab span {
+  font-size: 10.5px; font-weight: 650; color: var(--sutil); text-align: center;
+  text-transform: uppercase; letter-spacing: .03em; overflow: hidden; text-overflow: ellipsis;
+}
+.cob-cab span:first-child { text-align: left; }
+.cob-linha { background: var(--surface); border: 1px solid var(--border);
+             border-radius: var(--radius-sm); padding: 7px 11px; }
+.cob-nome { font-size: 13px; font-weight: 550; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap; }
+.cob-cel, .cob-total {
+  text-align: center; font-size: 13px; font-weight: 650; border-radius: 6px;
+  padding: 3px 0; font-variant-numeric: tabular-nums; background: var(--p-baixa-bg);
+  color: var(--p-baixa);
+}
+/* Zero é o produto desta tela, então tem cor de atenção e não de "vazio" — e a legenda
+   abaixo explica que significa NÃO OBSERVADO, não "foi mal". */
+.cob-cel.zero { background: var(--p-media-bg); color: var(--p-media); }
+.cob-total { background: var(--bg); color: var(--muted); }
+.cob-total.zero { background: var(--p-alta-bg); color: var(--p-alta); }
+.cob-total i { font-style: normal; font-size: 10px; vertical-align: super; }
+.cob-obs { font-size: 11.5px; color: var(--sutil); margin: 9px 0 0; line-height: 1.5; }
+
+/* =========================== REINCIDÊNCIA ================================ */
+.rei-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 9px; }
+.rei-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 3px solid var(--p-media); border-radius: var(--radius-sm); padding: 10px 13px;
+}
+.rei-item.alarme { border-left-color: var(--p-alta); }
+.rei-cab { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.rei-cab b { font-size: 13px; font-weight: 600; }
+.rei-n { margin-left: auto; font-size: 11px; font-weight: 650; color: var(--muted);
+         font-variant-numeric: tabular-nums; }
+.rei-item.alarme .rei-n { color: var(--p-alta); }
+.rei-meses { display: flex; gap: 4px; flex-wrap: wrap; margin: 7px 0 5px; }
+.rei-meses span {
+  font-size: 10.5px; font-weight: 600; background: var(--bg); color: var(--muted);
+  border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px;
+}
+.rei-ultima {
+  font-size: 12px; color: var(--muted); line-height: 1.45;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* ============================ MENU "NOVO" ================================ */
+.novo-menu { position: relative; }
+.novo-menu .seta { margin-left: 6px; font-size: 10px; opacity: .8; }
+.novo-opcoes {
+  display: none; position: absolute; right: 0; top: calc(100% + 6px); z-index: 60;
+  min-width: 232px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-md); padding: 5px;
+}
+.novo-menu.aberto .novo-opcoes { display: block; }
+.novo-opcoes button {
+  display: flex; align-items: baseline; gap: 9px; width: 100%; text-align: left;
+  border: 0; background: transparent; color: var(--text); cursor: pointer;
+  padding: 8px 10px; border-radius: var(--radius-sm); font-weight: 550; font-size: 13.5px;
+}
+.novo-opcoes button:hover { background: var(--bg); }
+.novo-ico { width: 16px; flex: none; text-align: center; color: var(--sutil); font-size: 13px; }
+/* A legenda é o que evita a pergunta "qual é a diferença entre Anotação e Nota?" no momento
+   do clique — a distinção é conceitual, não visual. */
+.novo-opcoes em { font-style: normal; font-size: 11.5px; color: var(--sutil); margin-left: auto; }
+
+/* ============================== NOTAS ==================================== */
+.notas-cab { display: flex; align-items: center; margin-bottom: 11px; }
+.chip-n {
+  margin-left: 6px; font-size: 10.5px; font-weight: 700; opacity: .75;
+  font-variant-numeric: tabular-nums;
+}
+.notas-lista { display: flex; flex-direction: column; gap: 16px; }
+.notas-dia-cab {
+  font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--sutil); margin: 0 0 6px;
+}
+.nota {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start;
+  gap: 4px 12px; background: var(--surface); border: 1px solid var(--border);
+  border-left: 3px solid var(--border-forte); border-radius: var(--radius-sm);
+  padding: 10px 13px; margin-bottom: 6px;
+}
+/* Arquivada continua legível, só recuada: ela existe para ser reencontrada, não escondida. */
+.nota.arquivada { border-left-color: var(--border); opacity: .62; }
+.nota-texto { font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.nota-ligacoes { grid-column: 1; display: flex; flex-wrap: wrap; gap: 5px; }
+.nota-lig {
+  font-size: 11px; font-weight: 600; padding: 1.5px 8px; border-radius: 20px;
+  border: 1px solid var(--border);
+}
+.nota-lig.pessoa { background: var(--primary-soft); color: var(--primary-dark); border-color: var(--primary-soft); }
+.nota-lig.pessoa.inativa { background: transparent; color: var(--muted); border-style: dashed; }
+.nota-lig.pessoa em { font-style: normal; font-size: 10px; color: var(--sutil); }
+.nota-lig.card { background: var(--s-in-progress-bg); color: var(--s-in-progress); border-color: var(--s-in-progress-bg); }
+.nota-acao {
+  grid-row: 1 / span 2; align-self: center; flex: none;
+  border: 1px solid var(--border); background: transparent; color: var(--muted);
+  font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 20px;
+  cursor: pointer; white-space: nowrap; transition: all .12s;
+}
+.nota-acao:hover { background: var(--bg); color: var(--text); border-color: var(--border-forte); }
+
+/* ====================== DOCA DE COMENTÁRIOS DO 1:1 ======================= */
+.doca {
+  position: sticky; bottom: 0; background: var(--surface);
+  border-top: 1px solid var(--border); box-shadow: var(--shadow-md);
+  padding: 11px 26px 13px; display: flex; flex-direction: column; gap: 8px;
+}
+.doca-cab { display: flex; align-items: baseline; gap: 9px; }
+.doca-titulo { font-size: 12px; font-weight: 650; }
+.doca-obs { font-size: 12px; color: var(--muted); }
+.doca-aviso { font-size: 11.5px; color: var(--sutil); }
+.doca.sem-dono .doca-aviso { color: var(--warn); }
+.doca-corpo { display: flex; align-items: flex-end; gap: 9px; }
+.doca-corpo textarea {
+  flex: 1; min-width: 0; resize: vertical; min-height: 46px;
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text); outline: none; font-size: 13.5px;
+  transition: border-color .12s;
+}
+.doca-corpo textarea:focus { border-color: var(--primary); }
+
+/* =============================== LOG ===================================== */
+.log-acoes { margin-top: 11px; }
+.log-visto { font-size: 11.5px; color: var(--sutil); margin: 8px 0 0; }
+.log-falhas { display: flex; flex-direction: column; gap: 8px; }
+.log-falha {
+  background: var(--erro-bg); border: 1px solid var(--erro-borda);
+  border-radius: var(--radius-sm); padding: 10px 13px;
+}
+.log-falha-cab { display: flex; align-items: baseline; gap: 9px; }
+.log-falha-cab b { font-size: 12.5px; font-weight: 600; color: var(--erro-txt);
+                   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A mensagem inteira, sem truncar: ela é o produto da tela — é o que diz qual campo
+   corrigir. Cortada em uma linha, devolveria a pessoa para a pasta de erros do Drive. */
+.log-msg {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px; line-height: 1.5; margin-top: 5px; color: var(--erro-txt);
+  word-break: break-word;
+}
+.log-quando { margin-left: auto; font-size: 11px; color: var(--sutil); flex: none;
+              font-variant-numeric: tabular-nums; }
+.log-dica { font-size: 12px; color: var(--muted); margin: 10px 0 0; line-height: 1.5; }
+.log-lista { display: flex; flex-direction: column; gap: 3px; }
+.log-linha {
+  display: flex; align-items: center; gap: 9px; padding: 6px 11px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 12.5px;
+}
+.log-arquivo { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-tipo { font-size: 11px; color: var(--sutil); flex: none; }
+.log-ok        { background: var(--p-baixa-bg); color: var(--p-baixa); }
+.log-ignorado  { background: var(--s-not-started-bg); color: var(--s-not-started); }
+.log-erro      { background: var(--p-alta-bg); color: var(--p-alta); }
+.log-sem       { background: var(--bg); color: var(--sutil); }
+
 @media (max-width: 860px) {
   .app { flex-direction: column; }
   .lateral { width: auto; height: auto; position: static; flex-direction: row; align-items: center;
@@ -757,6 +965,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .coluna { max-width: none; }
   .pessoa-linha { grid-template-columns: 1fr 80px; grid-row-gap: 7px; }
   .dupla { grid-template-columns: 1fr; }
+  /* A grade de cobertura tem 5 colunas fixas de 62px: em tela estreita o nome some.
+     Rola em vez de comprimir — número ilegível não é dado. */
+  .cob-grade { overflow-x: auto; }
+  .cob-cab, .cob-linha { grid-template-columns: minmax(110px, 1fr) repeat(5, 52px); }
   /* A agenda desce para baixo da fila: em tela estreita a coluna comeria a fila, e a ordem
      de leitura continua sendo trabalho primeiro. */
   .hoje-duas { grid-template-columns: 1fr; }
@@ -787,8 +999,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
         <span class="menu-ico">&#9638;</span><span>Dashboard</span></button>
       <button class="menu-item" id="menu-anotacoes" onclick="irPara('anotacoes')">
         <span class="menu-ico">&#9998;</span><span>Anotações</span></button>
+      <button class="menu-item" id="menu-notas" onclick="irPara('notas')">
+        <span class="menu-ico">&#9633;</span><span>Notas</span><span id="sinoNotas"></span></button>
       <button class="menu-item" id="menu-resumos" onclick="irPara('resumos')">
         <span class="menu-ico">&#9993;</span><span>Resumos</span></button>
+      <!-- O contador é o ponto do Log: a aba resolve investigação, mas quem não desconfia
+           não abre. O número no menu é o que faz desconfiar. -->
+      <button class="menu-item" id="menu-log" onclick="irPara('log')">
+        <span class="menu-ico">&#9707;</span><span>Log</span><span id="sinoLog"></span></button>
     </nav>
 
     <div class="lateral-pe">
@@ -815,7 +1033,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
         <button class="limpar" onclick="limparBusca()" title="Limpar">&times;</button>
       </div>
 
-      <button class="btn btn-primario" onclick="abrirModal()">Novo card</button>
+      <!-- "Novo" com as três opções abaixo dele, em vez de um botão que muda com a visão:
+           criar não depende de onde você está, e o rótulo fixo deixa de exigir que alguém
+           adivinhe o que o botão faz nesta tela. -->
+      <div class="novo-menu" id="novoMenu">
+        <button class="btn btn-primario" id="btnPrimario" onclick="alternarNovo(event)"
+                aria-haspopup="true" aria-expanded="false">Novo<span class="seta">&#9662;</span></button>
+        <div class="novo-opcoes" id="novoOpcoes" role="menu">
+          <button role="menuitem" onclick="escolherNovo('card')">
+            <span class="novo-ico">&#9776;</span>Card<em>demanda no board</em></button>
+          <button role="menuitem" onclick="escolherNovo('anotacao')">
+            <span class="novo-ico">&#9998;</span>Anotação<em>feedback de alguém</em></button>
+          <button role="menuitem" onclick="escolherNovo('nota')">
+            <span class="novo-ico">&#9633;</span>Nota<em>recado solto, sem juízo</em></button>
+        </div>
+      </div>
     </header>
 
     <!-- Separado do #aviso porque o carregar() limpa aquele; o resultado da sincronia
@@ -836,6 +1068,27 @@ button, input, select, textarea { font: inherit; color: inherit; }
     <button class="btn" onclick="fecharResumo()">Fechar</button>
   </div>
   <div class="leitura-corpo" id="leituraTexto"></div>
+
+  <!-- ============ A DOCA DE COMENTÁRIOS DO 1:1 ============
+       Doca inferior e não modal: você lê o compilado em cima e escreve embaixo, sem cobrir
+       o texto que está usando para conduzir a conversa. Ela é a metade que faltava — o
+       compilado diz o que VOCÊ deve dizer, e o que o colaborador responde não tinha onde
+       ficar. Grava sempre no Doc de HOJE, nunca no que está na tela se for de outra data. -->
+  <div class="doca" id="doca">
+    <div class="doca-cab">
+      <span class="doca-titulo">Comentários da conversa</span>
+      <span class="doca-obs" id="docaObs"></span>
+      <span class="espaco"></span>
+      <span class="doca-aviso" id="docaAviso"></span>
+    </div>
+    <div class="doca-corpo">
+      <textarea id="docaTexto" rows="2" placeholder="o que ele respondeu, com o que se comprometeu…"
+                oninput="pintarDoca()"></textarea>
+      <button class="btn btn-primario" id="btnComentar" onclick="salvarComentario()"
+              disabled>Gravar</button>
+    </div>
+    <div id="erroDoca"></div>
+  </div>
 </div>
 
 <!-- ===================== MODAL DE CARD ===================== -->
@@ -912,6 +1165,125 @@ button, input, select, textarea { font: inherit; color: inherit; }
   </div>
 </div>
 
+<!-- ==================== NOVA ANOTAÇÃO ====================
+     Só criação, sem edição: a camada não tem updateAnotacao, e o `05` diz que anotação é
+     registro de um momento — corrigir o passado é outra decisão, não um campo de formulário.
+     Aqui `tipo` é um select para uma pessoa escolher, e não texto livre: a armadilha que
+     fez três capturas morrerem com "ponto_forte" era de vocabulário de quem escreve JSON.
+     Numa lista de duas opções ela não existe. -->
+<div class="overlay" id="overlayAnotacao" onclick="cliqueForaFechaAnotacao(event)">
+  <div class="modal">
+    <div class="modal-cab">
+      <h2>Nova anotação</h2>
+      <button class="fechar" onclick="fecharModalAnotacao()" title="Fechar">&times;</button>
+    </div>
+
+    <form id="formAnotacao" onsubmit="salvarAnotacao(event)">
+      <div class="modal-corpo">
+        <div id="erroAnotacao"></div>
+
+        <div class="dupla">
+          <div class="campo">
+            <label for="a-pessoa_id">Pessoa *</label>
+            <select id="a-pessoa_id" required></select>
+          </div>
+          <div class="campo">
+            <label for="a-tipo">Tipo *</label>
+            <select id="a-tipo" required>
+              <option value="">—</option>
+              <option value="positivo">Positivo</option>
+              <option value="melhoria">Melhoria</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="campo">
+          <label for="a-nota">Observação *</label>
+          <!-- O juízo, na linguagem dele. A skill tem uma regra inteira sobre não
+               formalizar; aqui quem digita é ele, então o campo só não estorva. -->
+          <textarea id="a-nota" required placeholder="o que você observou"></textarea>
+        </div>
+
+        <div class="campo">
+          <label for="a-contexto">Evidência</label>
+          <input type="text" id="a-contexto" autocomplete="off"
+                 placeholder="o caso concreto que sustenta a observação">
+        </div>
+
+        <div class="dupla">
+          <div class="campo">
+            <label for="a-data">Data</label>
+            <input type="date" id="a-data">
+          </div>
+          <div class="campo">
+            <label>Valores</label>
+            <div class="pessoas" id="a-valores"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-pe">
+        <span class="carimbos">Vazia em data = hoje</span>
+        <button type="button" class="btn" onclick="fecharModalAnotacao()">Cancelar</button>
+        <button type="submit" class="btn btn-primario" id="btnSalvarAnotacao">Criar anotação</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================= NOVA NOTA =========================
+     Recado solto. NÃO é a aba Anotações: aqui não há tipo nem valores, porque não há
+     juízo. "Gustavo comentou que estava cansado" é verdadeiro, útil, e não é feedback —
+     registrá-lo como anotação o obrigaria a nascer positivo ou de melhoria e o faria
+     aparecer num compilado de 1:1 como se fosse avaliação.
+     As duas ligações são opcionais e independentes. -->
+<div class="overlay" id="overlayNota" onclick="cliqueForaFechaNota(event)">
+  <div class="modal">
+    <div class="modal-cab">
+      <h2>Nova nota</h2>
+      <button class="fechar" onclick="fecharModalNota()" title="Fechar">&times;</button>
+    </div>
+
+    <form id="formNota" onsubmit="salvarNota(event)">
+      <div class="modal-corpo">
+        <div id="erroNota"></div>
+
+        <div class="campo">
+          <label for="n-texto">Nota *</label>
+          <textarea id="n-texto" required
+                    placeholder="o que você quer reler depois"></textarea>
+        </div>
+
+        <p class="secao-form">Ligações — as duas opcionais</p>
+
+        <div class="dupla">
+          <div class="campo">
+            <label for="n-pessoa_id">Pessoa</label>
+            <select id="n-pessoa_id"></select>
+          </div>
+          <div class="campo">
+            <label for="n-data">Data</label>
+            <input type="date" id="n-data">
+          </div>
+        </div>
+
+        <div class="campo">
+          <label for="n-card_id">Demanda</label>
+          <!-- Select e não busca: com algumas dezenas de cards ativos a lista cabe, e um
+               campo de busca aqui pediria um segundo padrão de seleção na mesma tela. -->
+          <select id="n-card_id"></select>
+        </div>
+      </div>
+
+      <div class="modal-pe">
+        <span class="carimbos">Sem pessoa e sem demanda é o caso normal</span>
+        <button type="button" class="btn" onclick="fecharModalNota()">Cancelar</button>
+        <button type="submit" class="btn btn-primario" id="btnSalvarNota">Criar nota</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- ============ SELETOR DE DELEGADO, ao soltar em "Delegado" ============ -->
 <div class="overlay" id="overlayDelegar" onclick="cliqueForaCancela(event)">
   <div class="modal estreito">
@@ -938,6 +1310,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
 var STATUS_COLUNAS = <?!= JSON.stringify(STATUS_OPCOES) ?>;
 var PRIORIDADES = <?!= JSON.stringify(PRIORIDADE_OPCOES) ?>;
 var STATUS_PADRAO_UI = <?!= JSON.stringify(STATUS_PADRAO) ?>;
+/* O teto de linhas do Log vem do servidor pelo mesmo motivo das listas acima: quem corta é
+   o `listLog`, e a tela precisa dizer o número certo ao declarar o que ficou de fora. */
+var LOG_MAX_LINHAS_UI = <?!= JSON.stringify(LOG_MAX_LINHAS) ?>;
+/* Piso do que conta como vão, do Agenda.js. A sugestão de "onde cabe" tem que usar o mesmo
+   piso que desenhou os vãos na linha do tempo, senão ela ofereceria um espaço que a linha
+   não mostra. */
+var VAO_MINIMO_UI = <?!= JSON.stringify(VAO_MINIMO) ?>;
 
 var SEM_STATUS = 'Sem status';
 var STATUS_DELEGADO = 'Delegado';
@@ -962,13 +1341,28 @@ var VALORES = [
 
 var TITULOS = {
   hoje: 'Hoje', board: 'Board', dashboard: 'Dashboard',
-  anotacoes: 'Anotações', resumos: 'Resumos'
+  anotacoes: 'Anotações', notas: 'Notas', resumos: 'Resumos', log: 'Log'
 };
 
 var DIAS_RECORTE_DONE = 30;
 var DIAS_CONFERIR_DELEGADO = 7;
 var DIAS_CICLO_1A1 = 21;   // e não mês-calendário, para não quebrar na virada do mês
 var MS_DIA = 86400000;
+
+/* Janela da cobertura de feedback. **Igual ao padrão da `compilador-1a1`**, e não por
+   coincidência: o número existe para ser lido ao lado da compilação, e duas janelas
+   diferentes fariam a tela e o texto se contradizerem sobre o mesmo período. */
+var DIAS_COBERTURA = 30;
+
+/* Reincidência: em quantos meses distintos a mesma melhoria precisa aparecer.
+   Mês civil, e não janela móvel, porque o ciclo de 1:1 é descrito assim ("todo início de
+   mês") — é o recorte que ele usa quando fala em voz alta. */
+var MESES_REINCIDENCIA_SINAL = 2;
+var MESES_REINCIDENCIA_ALARME = 3;
+
+/* Amostra mínima para uma mediana valer como número na tela. Abaixo disto a tela mostra o
+   `n` e diz que é pouco, em vez de imprimir uma mediana de dois casos com cara de fato. */
+var AMOSTRA_MINIMA = 5;
 
 var MESES = ['janeiro','fevereiro','março','abril','maio','junho',
              'julho','agosto','setembro','outubro','novembro','dezembro'];
@@ -996,10 +1390,23 @@ var erroAnotacoes = '';
 var agenda = null;             // null = ainda não carregou
 var erroAgenda = '';
 
+/* O Log carrega no início, e não ao abrir a aba: o contador do menu é a razão de ele
+   existir, e um contador que só aparece depois de a pessoa abrir a aba não avisa ninguém. */
+var log = null;                // { linhas, dias, total, naJanela, cortadas, ok, ... }
+var erroLog = '';
+
+var notas = null;              // null = ainda não carregou
+var erroNotas = '';
+var notasArquivadas = false;   // o recorte da tela: por padrão só o que está aberto
+
 var resumos = null;            // { pessoas, orfas, inativos } — null = ainda não carregou
 var erroResumos = '';
 var resumoAberto = null;       // { id, titulo, texto, url } do que está na tela
 var resumoQuem = '';           // nome da pessoa, que o Doc não carrega — só a data
+/* O id de quem é o 1:1 aberto. O Doc não carrega nem o nome nem o id, e a doca de
+   comentários precisa do id para gravar — nome não é chave em lugar nenhum do sistema,
+   exceto no nome da pasta. */
+var resumoPessoaId = '';
 var carregandoResumo = '';     // id em trânsito, para o botão dizer que está buscando
 
 /* Recorte do Gantt. Vive no módulo, e não dentro do htmlGantt, porque `desenhar()` refaz o
@@ -1034,6 +1441,7 @@ function irPara(destino) {
   });
   document.getElementById('tituloVisao').textContent = TITULOS[destino];
   document.getElementById('caixaBusca').style.display = destino === 'board' ? '' : 'none';
+  fecharNovo();
 
   /* Anotações alimenta a fila de 1:1 do Hoje? Não — quem alimenta é `data_ultimo_1a1`,
      que vem de Pessoas. As anotações só são buscadas quando a aba delas abre. */
@@ -1041,6 +1449,40 @@ function irPara(destino) {
   if (destino === 'resumos' && resumos === null) return carregarResumos();
   desenhar();
 }
+
+/* ==========================================================================
+   O MENU "NOVO"
+
+   Três criações, um botão, disponível em toda visão. A versão anterior mudava o
+   rótulo conforme a tela ("Novo card" / "Nova anotação"), o que obrigava a olhar
+   o botão para saber o que ele faria — e escondia duas das três ações atrás de
+   uma troca de aba.
+   ========================================================================== */
+
+function alternarNovo(ev) {
+  if (ev) ev.stopPropagation();
+  var menu = document.getElementById('novoMenu');
+  var aberto = menu.classList.toggle('aberto');
+  document.getElementById('btnPrimario').setAttribute('aria-expanded', aberto ? 'true' : 'false');
+}
+
+function fecharNovo() {
+  document.getElementById('novoMenu').classList.remove('aberto');
+  document.getElementById('btnPrimario').setAttribute('aria-expanded', 'false');
+}
+
+function escolherNovo(qual) {
+  fecharNovo();
+  if (qual === 'card') return abrirModal();
+  if (qual === 'anotacao') return abrirModalAnotacao();
+  return abrirModalRecado();
+}
+
+/* Clique em qualquer lugar fecha. Registrado uma vez, no documento: um handler por item
+   de menu daria o mesmo resultado e precisaria ser refeito a cada render. */
+document.addEventListener('click', function (ev) {
+  if (!document.getElementById('novoMenu').contains(ev.target)) fecharNovo();
+});
 
 function alternarLateral() {
   var compacta = document.getElementById('app').classList.toggle('compacta');
@@ -1095,6 +1537,8 @@ function desenhar() {
   else if (visao === 'hoje') alvo.innerHTML = htmlHoje();
   else if (visao === 'dashboard') { alvo.innerHTML = htmlDashboard(); ligarGantt(); }
   else if (visao === 'resumos') alvo.innerHTML = htmlResumos();
+  else if (visao === 'notas') alvo.innerHTML = htmlNotas();
+  else if (visao === 'log') alvo.innerHTML = htmlLog();
   else alvo.innerHTML = htmlAnotacoes();
 
   atualizarSub();
@@ -1106,15 +1550,22 @@ function atualizarSub() {
   if (visao === 'board') sub = cards.length + (cards.length === 1 ? ' card' : ' cards');
   else if (visao === 'dashboard') sub = ativos().length + ' ativos';
   else if (visao === 'anotacoes' && anotacoes) sub = anotacoes.length + ' anotações';
+  else if (visao === 'log' && log) sub = 'últimos ' + log.dias + ' dias';
   document.getElementById('subVisao').textContent = sub;
 }
 
-/* O sino do menu conta o que está vencido: é a única coisa que justifica interromper. */
+/* Os sinos do menu contam o que justifica interromper: prazo estourado, captura perdida, e
+   nota aberta esperando leitura. `naoVistos` e não `erros` — ver o `marcarLogVisto`. */
 function atualizarSino() {
-  var n = vencidos().length;
-  document.getElementById('sinoHoje').outerHTML = n
-    ? '<span class="menu-sino" id="sinoHoje">' + n + '</span>'
-    : '<span id="sinoHoje"></span>';
+  sino('sinoHoje', vencidos().length);
+  sino('sinoLog', log ? log.naoVistos : 0);
+  sino('sinoNotas', notas ? notasAbertas().length : 0);
+}
+
+function sino(id, n) {
+  document.getElementById(id).outerHTML = n
+    ? '<span class="menu-sino" id="' + id + '">' + n + '</span>'
+    : '<span id="' + id + '"></span>';
 }
 
 /* ==========================================================================
@@ -1123,7 +1574,51 @@ function atualizarSino() {
 function recarregarTudo() {
   carregar();
   carregarAgenda();
+  carregarLog();
+  carregarNotas();
   if (anotacoes !== null) carregarAnotacoesEmSilencio();
+}
+
+/**
+ * O log, em chamada própria e sem trocar a tela por "carregando".
+ *
+ * Vem sempre — inclusive quando a aba aberta é outra —, porque o produto dele é o contador
+ * do menu. Falha aqui não pode atrapalhar nada: o contador simplesmente não aparece, e a
+ * aba explica o motivo quando alguém abrir.
+ */
+function carregarLog() {
+  google.script.run
+    .withSuccessHandler(function (r) {
+      log = r;
+      erroLog = '';
+      atualizarSino();
+      if (visao === 'log') desenhar();
+    })
+    .withFailureHandler(function (err) {
+      log = null;
+      erroLog = mensagem(err);
+      atualizarSino();
+      if (visao === 'log') desenhar();
+    })
+    .listLog();
+}
+
+/** As notas, em chamada própria — como o log, porque o contador do menu depende delas. */
+function carregarNotas() {
+  google.script.run
+    .withSuccessHandler(function (lista) {
+      notas = lista || [];
+      erroNotas = '';
+      atualizarSino();
+      if (visao === 'notas') desenhar();
+    })
+    .withFailureHandler(function (err) {
+      notas = [];
+      erroNotas = mensagem(err);
+      atualizarSino();
+      if (visao === 'notas') desenhar();
+    })
+    .listNotas();
 }
 
 function carregar() {
@@ -1328,7 +1823,56 @@ function htmlAgenda() {
   }
   if (!agenda) return cab + '<p class="carregando">Carregando agenda…</p>';
 
-  return cab + faixaDiaInteiro() + focoAgenda() + agendaLinha() + rodapeAgenda();
+  return cab + faixaDiaInteiro() + focoAgenda() + ondeCabe() + agendaLinha() + rodapeAgenda();
+}
+
+/**
+ * O maior vão que ainda vem, e o topo da fila para ocupá-lo.
+ *
+ * É a única coisa que nasce de a agenda existir: o app já sabia o que fazer e agora sabe
+ * quando há espaço, e ninguém cruzava os dois. Fica **acima** da linha do tempo porque é
+ * conclusão, e a linha é a evidência dela.
+ *
+ * **Não promete que caiba.** Não existe campo de estimativa no schema, então dizer "cabe
+ * este card" seria inventar uma duração — o texto sugere o que pegar, e o tamanho do vão
+ * fica ao lado para você decidir. Ver `04`.
+ */
+function ondeCabe() {
+  if (!agenda) return '';
+
+  /* Vão que já passou não é oportunidade. O corte é `agoraMin`, e um vão em curso conta
+     pelo que sobra dele — é o que está de fato disponível. */
+  var restantes = agenda.vaos
+    .filter(function (v) { return v.fimMin > agenda.agoraMin; })
+    .map(function (v) {
+      var inicio = Math.max(v.inicioMin, agenda.agoraMin);
+      return { inicioMin: inicio, fimMin: v.fimMin, minutos: v.fimMin - inicio };
+    })
+    .filter(function (v) { return v.minutos >= VAO_MINIMO_UI; });
+
+  if (!restantes.length) return '';
+
+  var maior = restantes.reduce(function (a, b) { return b.minutos > a.minutos ? b : a; });
+  var topo = filaDoDia()[0];
+
+  var sugestao = topo
+    ? '<div class="cabe-card"><span class="pill ' +
+        (CLASSE_PRIORIDADE[topo.prioridade] || '') + '">' + esc(topo.prioridade || '—') +
+        '</span><span class="txt">' + esc(topo.titulo || '(sem título)') + '</span></div>'
+    : '<div class="cabe-vazio">Nada vencendo — vão livre para o que você escolher.</div>';
+
+  return '<div class="ag-cabe">' +
+      '<div class="cabe-obs">Maior vão restante</div>' +
+      '<div class="cabe-quando">' + horaCurta(maior.inicioMin) + '–' +
+        horaCurta(maior.fimMin) + '<span>' + duracao(maior.minutos) + '</span></div>' +
+      sugestao +
+    '</div>';
+}
+
+/** Os três blocos do Hoje numa lista só, na mesma ordem em que eles aparecem. */
+function filaDoDia() {
+  var hoje = hojeIso();
+  return vencidos().concat(vencemEm(hoje), vencemEm(isoMaisDias(1))).sort(porFilaDoDia);
 }
 
 /* Evento de dia inteiro não tem hora para ocupar, então não entra na linha do tempo nem
@@ -1544,12 +2088,7 @@ function bloco(titulo, classe, lista, vazio) {
      O status entra porque, empatados em urgência, o que já está na mão é o que ele
      continua; o Delegado no fim é acompanhamento, não execução. O prazo continua sendo
      o critério final para o vencido de treze dias não ficar atrás do de ontem. */
-  var ordenada = lista.slice().sort(function (a, b) {
-    var p = ordemPrioridade(a) - ordemPrioridade(b);
-    if (p !== 0) return p;
-    var s = ordemStatus(a) - ordemStatus(b);
-    return s !== 0 ? s : porPrazo(a, b);
-  });
+  var ordenada = lista.slice().sort(porFilaDoDia);
 
   var corpo = ordenada.length
     ? '<div class="painel"><div class="linhas">' + ordenada.map(htmlLinha).join('') + '</div></div>'
@@ -1586,6 +2125,17 @@ function ordemPrioridade(card) {
 function ordemStatus(card) {
   var ordem = { 'In progress': 0, 'Not started': 1, 'Delegado': 2, 'Done': 3 };
   return card.status in ordem ? ordem[card.status] : 4;
+}
+
+/* A ordem das listas do Hoje: prioridade → status → prazo.
+   Fica numa função nomeada porque tem dois consumidores — os blocos do `bloco()` e a
+   sugestão de "onde cabe" da agenda. Se a sugestão discordasse do topo visível da fila,
+   uma das duas estaria mentindo, e a única defesa contra isso é não haver duas contas. */
+function porFilaDoDia(a, b) {
+  var p = ordemPrioridade(a) - ordemPrioridade(b);
+  if (p !== 0) return p;
+  var s = ordemStatus(a) - ordemStatus(b);
+  return s !== 0 ? s : porPrazo(a, b);
 }
 
 /* Prazo crescente, com o card SEM prazo no fim.
@@ -1906,6 +2456,8 @@ function htmlDashboard() {
       cartao(semPrazo.length, 'sem prazo') +
     '</div></div>' +
 
+    htmlTempo() +
+
     '<div class="secao">' +
       '<p class="secao-titulo">Prioridade × status <span class="secao-num">ativos</span></p>' +
       htmlMatriz(lista) +
@@ -1917,6 +2469,135 @@ function htmlDashboard() {
       htmlGantt(lista) +
     '</div>' +
   '</div>';
+}
+
+/* ==========================================================================
+   TEMPO
+   --------------------------------------------------------------------------
+   A dimensão que o resto do Dashboard não tem: ele conta *quantos*, isto conta
+   *há quanto tempo*.
+
+   **Tempo de fila ficou de fora, por decisão baseada no dado.** `criado_em` →
+   `data_inicio` deu mediana 0 e mínimo −7 nos 38 cards reais: em vários deles o
+   trabalho começou ANTES do card existir. Como métrica de espera, não mede nada.
+   O fato sobrevive invertido, como uma linha — é ele que diz que o board corre
+   atrás da realidade. Ver `04`.
+   ========================================================================== */
+
+function htmlTempo() {
+  var ciclo = duracoesDeCiclo();
+  var idade = idadesDoNaoComecado();
+  var atrasados = cardsRegistradosDepois();
+
+  return '<div class="secao">' +
+      '<p class="secao-titulo">Tempo</p>' +
+      '<div class="tempo-grade">' +
+        blocoDeTempo('Ciclo', 'de In progress até Done', ciclo, 'd') +
+        blocoDeTempo('Espera no backlog', 'Not started, desde a criação', idade, 'd') +
+      '</div>' +
+      htmlCiclosLongos(ciclo) +
+      (atrasados
+        ? '<p class="tempo-obs">Em <b>' + atrasados + '</b> card(s) o trabalho começou ' +
+          'antes de o card existir — <code>data_inicio</code> anterior a ' +
+          '<code>criado_em</code>. O board está registrando depois do fato, e é por isso ' +
+          'que não há métrica de fila aqui.</p>'
+        : '') +
+    '</div>';
+}
+
+/**
+ * Um bloco de mediana, com a amostra na frente do número.
+ *
+ * Abaixo de `AMOSTRA_MINIMA` a mediana **não é impressa**: dizer "2 dias" a partir de dois
+ * casos tem a mesma cara de dizer a partir de duzentos, e é a única das duas que engana.
+ */
+function blocoDeTempo(titulo, obs, valores, unidade) {
+  var corpo;
+
+  if (!valores.length) {
+    corpo = '<div class="tempo-vazio">sem dado ainda</div>';
+  } else if (valores.length < AMOSTRA_MINIMA) {
+    corpo = '<div class="tempo-vazio">amostra de ' + valores.length + ' — pouco para mediana</div>';
+  } else {
+    corpo = '<div class="tempo-num">' + mediana(valores) + '<span>' + unidade + '</span></div>' +
+      '<div class="tempo-faixa">mín ' + Math.min.apply(null, valores) + unidade +
+        ' · máx ' + Math.max.apply(null, valores) + unidade + '</div>';
+  }
+
+  return '<div class="tempo-bloco">' +
+      '<div class="tempo-titulo">' + esc(titulo) +
+        '<span class="tempo-n">n=' + valores.length + '</span></div>' +
+      corpo +
+      '<div class="tempo-obs-min">' + esc(obs) + '</div>' +
+    '</div>';
+}
+
+/** Os cards que passaram de 2× a mediana do ciclo — o que demorou fora do padrão. */
+function htmlCiclosLongos(ciclo) {
+  if (ciclo.length < AMOSTRA_MINIMA) return '';
+
+  var teto = mediana(ciclo) * 2;
+  var longos = cards
+    .filter(function (c) {
+      if (c.status !== STATUS_DONE || !c.data_inicio || !c.data_conclusao) return false;
+      return diasEntre(c.data_inicio, c.data_conclusao) > teto;
+    })
+    .map(function (c) { return { card: c, dias: diasEntre(c.data_inicio, c.data_conclusao) }; })
+    .sort(function (a, b) { return b.dias - a.dias; });
+
+  if (!longos.length) {
+    return '<p class="tempo-obs">Nenhum card passou de 2× a mediana do ciclo (' +
+      teto + 'd). A dispersão está baixa.</p>';
+  }
+
+  return '<div class="tempo-longos">' +
+      '<p class="tempo-longos-cab">Acima de 2× a mediana (' + teto + 'd)</p>' +
+      longos.map(function (l) {
+        return '<div class="tempo-longo">' +
+            '<span class="txt">' + esc(l.card.titulo || '(sem título)') + '</span>' +
+            '<span class="pill ' + (CLASSE_PRIORIDADE[l.card.prioridade] || '') + '">' +
+              esc(l.card.prioridade || '—') + '</span>' +
+            '<b>' + l.dias + 'd</b>' +
+          '</div>';
+      }).join('') +
+    '</div>';
+}
+
+/* Só Done com as duas pontas. Card reaberto mantém a `data_conclusao` antiga até fechar de
+   novo (ver o comentário do CARIMBO_DE_STATUS), e o par continua coerente. */
+function duracoesDeCiclo() {
+  return cards
+    .filter(function (c) {
+      return c.status === STATUS_DONE && c.data_inicio && c.data_conclusao;
+    })
+    .map(function (c) { return diasEntre(c.data_inicio, c.data_conclusao); })
+    .filter(function (d) { return d >= 0; });
+}
+
+/* Not started que já tem `criado_em`. A migração preserva o `created_time` do Notion, então
+   isto vale também para os cards que vieram de lá — não é só do que nasceu no app. */
+function idadesDoNaoComecado() {
+  var hoje = hojeIso();
+  return cards
+    .filter(function (c) { return c.status === 'Not started' && c.criado_em; })
+    .map(function (c) { return diasEntre(c.criado_em.slice(0, 10), hoje); })
+    .filter(function (d) { return d >= 0; });
+}
+
+/** Cards em que `data_inicio` é anterior a `criado_em` — trabalho antes do registro. */
+function cardsRegistradosDepois() {
+  return cards.filter(function (c) {
+    return c.data_inicio && c.criado_em && c.data_inicio < c.criado_em.slice(0, 10);
+  }).length;
+}
+
+/* Mediana e não média: com amostra pequena um outlier desloca a média e não a mediana, e é
+   justamente o outlier que a lista de "acima de 2×" existe para mostrar separado. */
+function mediana(valores) {
+  if (!valores.length) return 0;
+  var s = valores.slice().sort(function (a, b) { return a - b; });
+  var m = s.length >> 1;
+  return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);
 }
 
 /**
@@ -2481,10 +3162,163 @@ function htmlAnotacoes() {
     '<div class="secao"><p class="secao-titulo">Distribuição por pessoa' +
       ocultos(inativos, inativos + ' inativo' + (inativos > 1 ? 's' : '') + ' fora da conta') +
       '</p>' + htmlPorPessoa() + '</div>' +
+    htmlCobertura() +
+    htmlReincidencia() +
     '<div class="secao"><p class="secao-titulo">Anotações' +
       ocultos(anotacoes.length - notasDeAtivos().length, 'de quem saiu do time') +
       '</p>' + htmlFiltros() + htmlListaNotas() + '</div>' +
   '</div>';
+}
+
+/* ==========================================================================
+   COBERTURA — onde você está cego
+   --------------------------------------------------------------------------
+   Uma célula por valor, por pessoa, na janela de DIAS_COBERTURA. Zero é o dado:
+   é a `compilador-1a1` dizendo "não tem base pra falar de colaboração", só que
+   ANTES da conversa em vez de no meio dela.
+
+   A janela é a mesma que a skill usa por padrão. Duas janelas diferentes fariam
+   a tela e o texto discordarem sobre o mesmo período, e o número perderia a
+   função de preparar a leitura do compilado.
+   ========================================================================== */
+
+function htmlCobertura() {
+  if (!pessoasAtivas.length) return '';
+
+  var desde = isoMenosDias(DIAS_COBERTURA);
+  var linhas = pessoasAtivas.map(function (p) {
+    var minhas = anotacoes.filter(function (a) {
+      return a.pessoa_id === p.id && a.data && a.data >= desde;
+    });
+
+    var celulas = VALORES.map(function (v) {
+      return { rotulo: v.rotulo, n: minhas.filter(function (a) { return a[v.campo] === true; }).length };
+    });
+
+    /* Anotação pode não ter valor nenhum — o contrato permite, e "tag errada é pior que
+       tag ausente". Então a soma das células não fecha com o total, de propósito. */
+    var comValor = minhas.filter(function (a) {
+      return VALORES.some(function (v) { return a[v.campo] === true; });
+    }).length;
+
+    return {
+      pessoa: p, celulas: celulas, total: minhas.length,
+      semValor: minhas.length - comValor,
+      vazias: celulas.filter(function (c) { return !c.n; }).length
+    };
+  });
+
+  /* Quem tem mais lacunas primeiro: a tela existe para mostrar o buraco, não o placar. */
+  linhas.sort(function (a, b) {
+    return b.vazias - a.vazias || a.pessoa.nome.localeCompare(b.pessoa.nome, 'pt-BR');
+  });
+
+  return '<div class="secao">' +
+      '<p class="secao-titulo">Cobertura por valor' +
+        '<span class="secao-num">últimos ' + DIAS_COBERTURA + ' dias</span></p>' +
+      '<div class="cob-grade">' +
+        '<div class="cob-cab"><span></span>' + VALORES.map(function (v) {
+          return '<span>' + esc(v.rotulo) + '</span>';
+        }).join('') + '<span>total</span></div>' +
+        linhas.map(function (l) {
+          return '<div class="cob-linha">' +
+              '<span class="cob-nome">' + esc(l.pessoa.nome) + '</span>' +
+              l.celulas.map(function (c) {
+                return '<span class="cob-cel' + (c.n ? '' : ' zero') + '" title="' +
+                  esc(c.rotulo) + ': ' + c.n + '">' + (c.n || '—') + '</span>';
+              }).join('') +
+              '<span class="cob-total' + (l.total ? '' : ' zero') + '"' +
+                (l.semValor ? ' title="' + l.semValor + ' anotação(ões) sem valor marcado"' : '') +
+                '>' + l.total + (l.semValor ? '<i>*</i>' : '') + '</span>' +
+            '</div>';
+        }).join('') +
+      '</div>' +
+      '<p class="cob-obs">Célula vazia não é "foi mal nesse valor" — é <b>não observado</b>. ' +
+        'A soma das quatro pode passar do total (uma anotação carrega mais de um valor) ou ' +
+        'ficar abaixo dele (anotação sem valor marcado, sinalizada com <b>*</b>).</p>' +
+    '</div>';
+}
+
+/* ==========================================================================
+   REINCIDÊNCIA — a melhoria que não anda
+   --------------------------------------------------------------------------
+   Mesma pessoa, mesmo valor, `tipo = melhoria`, em meses civis distintos. Mês e
+   não janela móvel porque o ciclo de 1:1 é descrito assim, e é o recorte que ele
+   usa quando fala em voz alta.
+
+   Muda a conversa de "vamos falar sobre isso" para "o plano anterior não pegou",
+   e sai de (pessoa_id, valor, tipo, data) sem interpretar uma palavra do texto.
+   ========================================================================== */
+
+function htmlReincidencia() {
+  var achados = reincidencias();
+
+  if (!achados.length) {
+    return '<div class="secao"><p class="secao-titulo">Reincidência</p>' +
+      '<p class="vazio-msg">Nenhuma melhoria repetida em ' + MESES_REINCIDENCIA_SINAL +
+      ' meses ou mais. Ou os planos pegaram, ou o registro está esparso — a cobertura ' +
+      'acima diz qual dos dois.</p></div>';
+  }
+
+  return '<div class="secao">' +
+      '<p class="secao-titulo">Reincidência' +
+        '<span class="secao-num">' + achados.length + '</span></p>' +
+      '<div class="rei-lista">' + achados.map(function (r) {
+        var alarme = r.meses.length >= MESES_REINCIDENCIA_ALARME;
+        return '<div class="rei-item' + (alarme ? ' alarme' : '') + '">' +
+            '<div class="rei-cab">' +
+              '<b>' + esc(r.pessoa.nome) + '</b>' +
+              '<span class="pill t-melhoria">' + esc(r.rotulo) + '</span>' +
+              '<span class="rei-n">' + r.meses.length + ' meses</span>' +
+            '</div>' +
+            '<div class="rei-meses">' + r.meses.map(function (m) {
+              return '<span>' + nomeDoMesIso(m) + '</span>';
+            }).join('') + '</div>' +
+            '<div class="rei-ultima">Última: ' + esc(r.ultima.nota || '') + '</div>' +
+          '</div>';
+      }).join('') + '</div>' +
+    '</div>';
+}
+
+function reincidencias() {
+  var achados = [];
+
+  pessoasAtivas.forEach(function (p) {
+    VALORES.forEach(function (v) {
+      var minhas = anotacoes.filter(function (a) {
+        return a.pessoa_id === p.id && a.tipo === 'melhoria' && a[v.campo] === true && a.data;
+      });
+
+      /* Meses DISTINTOS, não contagem de notas: três anotações da mesma semana são um
+         episódio, não um padrão. É a distinção que separa "insistiu no assunto" de
+         "o assunto voltou". */
+      var meses = minhas.map(function (a) { return a.data.slice(0, 7); })
+        .filter(function (m, i, todos) { return todos.indexOf(m) === i; })
+        .sort();
+
+      if (meses.length < MESES_REINCIDENCIA_SINAL) return;
+
+      var ultima = minhas.slice().sort(function (a, b) {
+        return String(b.data).localeCompare(String(a.data));
+      })[0];
+
+      achados.push({ pessoa: p, rotulo: v.rotulo, meses: meses, ultima: ultima });
+    });
+  });
+
+  /* Mais meses primeiro — é a ordem da gravidade, e o alarme fica no topo. */
+  return achados.sort(function (a, b) {
+    return b.meses.length - a.meses.length ||
+           a.pessoa.nome.localeCompare(b.pessoa.nome, 'pt-BR');
+  });
+}
+
+/* '2026-08' → 'ago/26'. Curto porque são vários lado a lado. */
+function nomeDoMesIso(iso) {
+  var partes = String(iso).split('-');
+  var mes = Number(partes[1]);
+  if (!mes || mes < 1 || mes > 12) return iso;
+  return MESES[mes - 1].slice(0, 3) + '/' + String(partes[0]).slice(2);
 }
 
 /**
@@ -2732,7 +3566,8 @@ function htmlLinhaResumo(p) {
 
   var acao = ultimo
     ? '<button class="btn" data-id="' + esc(ultimo.id) + '" data-quem="' + esc(p.nome) + '"' +
-      ' onclick="abrirResumo(this.dataset.id, this.dataset.quem)">' +
+      ' data-pessoa="' + esc(p.pessoa_id) + '"' +
+      ' onclick="abrirResumo(this.dataset.id, this.dataset.quem, this.dataset.pessoa)">' +
       (carregandoResumo === ultimo.id ? 'Abrindo…' : 'Ler') + '</button>'
     : '';
 
@@ -2757,9 +3592,10 @@ function htmlLinhaResumo(p) {
  * interpretar a formatação que a skill escreveu, e a leitura sai da página em vez de
  * dividir espaço com a lista — ela é o que se lê antes de entrar numa conversa.
  */
-function abrirResumo(id, quem) {
+function abrirResumo(id, quem, pessoaId) {
   carregandoResumo = id;
   resumoQuem = quem || '';
+  resumoPessoaId = pessoaId || '';
   desenhar();
 
   google.script.run
@@ -2783,6 +3619,8 @@ function mostrarLeitura() {
   document.getElementById('leituraData').textContent = fmtData(dataDoTitulo(resumoAberto.titulo));
   document.getElementById('leituraTexto').textContent = resumoAberto.texto;
   document.getElementById('leituraLink').href = resumoAberto.url;
+  pintarAvisoDaDoca();
+  pintarDoca();
   document.getElementById('leitura').classList.add('aberto');
   window.scrollTo(0, 0);
 }
@@ -2795,15 +3633,359 @@ function dataDoTitulo(titulo) {
 }
 
 function fecharResumo() {
+  /* Texto digitado e não gravado é a única coisa nesta tela que não existe em outro lugar.
+     Perdê-lo por um Escape no meio de uma conversa seria o pior desfecho possível. */
+  var pendente = document.getElementById('docaTexto').value.trim();
+  if (pendente && !confirm('Há comentário não gravado. Fechar e perder o texto?')) return;
+
   resumoAberto = null;
   resumoQuem = '';
+  resumoPessoaId = '';
+  document.getElementById('docaTexto').value = '';
+  document.getElementById('erroDoca').innerHTML = '';
   document.getElementById('leitura').classList.remove('aberto');
   desenhar();
+}
+
+/* ==========================================================================
+   COMENTÁRIOS DO 1:1
+
+   Grava no Doc de HOJE daquela pessoa — nunca no que está na tela, se ele for de
+   outra data. A `compilador-1a1` proíbe mexer em Doc de data anterior (`05`), e
+   comentar lendo um compilado de julho não pode reescrever julho.
+
+   E carimba `data_ultimo_1a1`: comentário é o EVENTO do 1:1, diferente de
+   compilar, que é preparação e pode rodar três vezes na semana.
+   ========================================================================== */
+
+function pintarDoca() {
+  var texto = document.getElementById('docaTexto').value.trim();
+  document.getElementById('btnComentar').disabled = !texto || !resumoPessoaId;
+}
+
+/* Diz ONDE vai cair antes de você digitar. Sem isso, comentar lendo um compilado antigo
+   pareceria estar escrevendo naquele arquivo. */
+function pintarAvisoDaDoca() {
+  var doca = document.getElementById('doca');
+  var obs = document.getElementById('docaObs');
+  var aviso = document.getElementById('docaAviso');
+
+  if (!resumoPessoaId) {
+    doca.classList.add('sem-dono');
+    obs.textContent = '';
+    aviso.textContent = 'Sem pessoa identificada — não é possível gravar daqui.';
+    return;
+  }
+
+  doca.classList.remove('sem-dono');
+  obs.textContent = resumoQuem;
+
+  var doDia = dataDoTitulo(resumoAberto ? resumoAberto.titulo : '') === hojeIso();
+  aviso.textContent = doDia
+    ? 'Vai no compilado de hoje.'
+    : 'Vai no registro de hoje — o compilado aberto não é alterado.';
+}
+
+function salvarComentario() {
+  var texto = document.getElementById('docaTexto').value.trim();
+  if (!texto || !resumoPessoaId) return;
+
+  var btn = document.getElementById('btnComentar');
+  btn.disabled = true;
+  btn.textContent = 'Gravando…';
+  document.getElementById('erroDoca').innerHTML = '';
+
+  google.script.run
+    .withSuccessHandler(function (r) {
+      btn.textContent = 'Gravar';
+      document.getElementById('docaTexto').value = '';
+      pintarDoca();
+
+      /* Mostra o Doc de hoje — que é onde o comentário caiu, e pode não ser o que estava
+         aberto. Trocar a tela é o que torna visível que a gravação foi para outro arquivo. */
+      resumoAberto = { id: r.id, titulo: r.titulo, texto: r.texto, url: r.url };
+      mostrarLeitura();
+
+      /* Pessoas mudou (`data_ultimo_1a1`) e a pasta de resumos também. Sem recarregar, a
+         fila de 1:1 do Hoje continuaria cobrando a conversa que acabou de acontecer. */
+      carregarPessoas();
+      carregarResumos();
+    })
+    .withFailureHandler(function (err) {
+      btn.textContent = 'Gravar';
+      pintarDoca();
+      /* O texto NÃO é limpo: o erro é para corrigir, não para recomeçar — e aqui o que
+         foi digitado veio de uma conversa que já passou. */
+      document.getElementById('erroDoca').innerHTML =
+        '<div class="erro-form">' + esc(mensagem(err)) + '</div>';
+    })
+    .comentar1a1({
+      pessoa_id: resumoPessoaId,
+      texto: texto,
+      resumo_id: resumoAberto ? resumoAberto.id : ''
+    });
 }
 
 function filtrarPessoa(v) { filtroPessoa = v; desenhar(); }
 function filtrarTipo(v)   { filtroTipo = v; desenhar(); }
 function filtrarValor(v)  { filtroValor = (filtroValor === v ? '' : v); desenhar(); }
+
+/* ==========================================================================
+   NOTAS — o recado solto
+   --------------------------------------------------------------------------
+   Não é a tela de Anotações, e a diferença é a razão de existirem duas. Lá o
+   material é feedback: tem tipo, tem valor, vira compilado de 1:1. Aqui é o que
+   ele quer reler depois e não julga nada — "Gustavo comentou que estava cansado",
+   "Pessoa X gostaria de participar da demanda A".
+
+   Por isso a tela não tem gráfico, contagem por tipo nem ranking: nota não se
+   agrega, se relê. O que ela precisa é ser fácil de varrer e fácil de aposentar.
+   ========================================================================== */
+
+function htmlNotas() {
+  if (erroNotas) {
+    return '<div class="faixa"><div class="erro"><b>Não foi possível carregar as notas.</b>' +
+      '<code>' + esc(erroNotas) + '</code></div></div>';
+  }
+  if (!notas) return '<p class="carregando">Carregando notas…</p>';
+
+  var abertas = notasAbertas();
+  var arquivadas = notas.length - abertas.length;
+  var lista = notasArquivadas ? notas.filter(function (n) { return n.arquivada === true; }) : abertas;
+
+  if (!notas.length) {
+    return '<div class="pagina"><p class="vazio-msg">Nenhuma nota ainda. ' +
+      'Use <b>Novo → Nota</b> para o recado que não é card nem feedback.</p></div>';
+  }
+
+  return '<div class="pagina">' +
+      '<div class="secao">' +
+        '<div class="notas-cab">' +
+          '<div class="filtros">' +
+            chipNotas(false, 'Abertas', abertas.length) +
+            chipNotas(true, 'Arquivadas', arquivadas) +
+          '</div>' +
+        '</div>' +
+        (lista.length ? htmlListaDeNotas(lista) : '<p class="vazio-msg">' +
+          (notasArquivadas ? 'Nada arquivado ainda.' : 'Nenhuma nota aberta — tudo relido.') +
+          '</p>') +
+      '</div>' +
+    '</div>';
+}
+
+function notasAbertas() {
+  return notas ? notas.filter(function (n) { return n.arquivada !== true; }) : [];
+}
+
+function chipNotas(arquivadas, rotulo, n) {
+  return '<button class="chip' + (notasArquivadas === arquivadas ? ' ativo' : '') +
+    '" onclick="verNotas(' + arquivadas + ')">' + rotulo +
+    '<span class="chip-n">' + n + '</span></button>';
+}
+
+function verNotas(arquivadas) { notasArquivadas = arquivadas; desenhar(); }
+
+/**
+ * Uma nota por cartão, agrupadas por dia.
+ *
+ * Agrupa por data porque é assim que a releitura acontece — "o que eu anotei na terça" —, e
+ * uma lista corrida de trinta notas sem marco de dia obriga a ler a data de cada uma para
+ * saber onde está.
+ */
+function htmlListaDeNotas(lista) {
+  var grupos = [];
+  var porData = {};
+
+  lista.forEach(function (n) {
+    var chave = n.data || '';
+    if (!porData[chave]) { porData[chave] = []; grupos.push(chave); }
+    porData[chave].push(n);
+  });
+
+  return '<div class="notas-lista">' + grupos.map(function (data) {
+    return '<div class="notas-dia">' +
+        '<p class="notas-dia-cab">' + (data ? rotuloDeDia(data) : 'sem data') + '</p>' +
+        porData[data].map(htmlNota).join('') +
+      '</div>';
+  }).join('') + '</div>';
+}
+
+/* "hoje", "ontem", ou a data. Marco relativo é o que se lê de relance nos dois dias que
+   importam; passado disso a data absoluta é mais útil que "há 9 dias". */
+function rotuloDeDia(iso) {
+  if (iso === hojeIso()) return 'hoje';
+  if (iso === isoMenosDias(1)) return 'ontem';
+  return fmtData(iso);
+}
+
+function htmlNota(n) {
+  var pessoa = n.pessoa_id ? (pessoasPorId[n.pessoa_id] || null) : null;
+  var card = n.card_id ? (cardsPorId[n.card_id] || null) : null;
+
+  /* Id que não resolve aparece cru, como em todo o resto da tela: dado órfão escondido é
+     problema que ninguém acha. */
+  var ligacoes = '';
+  if (n.pessoa_id) {
+    ligacoes += '<span class="nota-lig pessoa' + (pessoa && !pessoa.ativo ? ' inativa' : '') + '">' +
+      esc(pessoa ? pessoa.nome : n.pessoa_id) +
+      (pessoa && !pessoa.ativo ? ' <em>inativo</em>' : '') + '</span>';
+  }
+  if (n.card_id) {
+    ligacoes += '<span class="nota-lig card">' +
+      esc(card ? (card.titulo || '(sem título)') : n.card_id) + '</span>';
+  }
+
+  var arquivada = n.arquivada === true;
+
+  return '<div class="nota' + (arquivada ? ' arquivada' : '') + '">' +
+      '<div class="nota-texto">' + esc(n.texto) + '</div>' +
+      (ligacoes ? '<div class="nota-ligacoes">' + ligacoes + '</div>' : '') +
+      '<button class="nota-acao" onclick="alternarArquivoDaNota(\'' + esc(n.id) + '\', ' +
+        (!arquivada) + ')" title="' +
+        (arquivada ? 'Trazer de volta para as abertas' : 'Arquivar — sai da lista, fica na planilha') +
+        '">' + (arquivada ? '&#8630; reabrir' : '&#10003; arquivar') + '</button>' +
+    '</div>';
+}
+
+function alternarArquivoDaNota(id, arquivar) {
+  google.script.run
+    .withSuccessHandler(function () { carregarNotas(); })
+    .withFailureHandler(function (err) {
+      document.getElementById('aviso').innerHTML =
+        '<div class="aviso">Não foi possível arquivar: ' + esc(mensagem(err)) + '</div>';
+    })
+    .arquivarNota(id, arquivar);
+}
+
+/* ==========================================================================
+   LOG DA INGESTÃO
+   --------------------------------------------------------------------------
+   A metade invisível do sistema. Toda captura de skill confirma ANTES de ser
+   validada — a skill grava o arquivo e diz "anotado", e quem valida é o
+   processarInbox, até 10 minutos depois. Quando falha, o fracasso ficava aqui e
+   em `erros/`, e a tela não dizia nada.
+
+   Falhas primeiro, rolagem depois: dump cronológico obrigaria a caçar o erro no
+   meio do que deu certo, e é o erro que traz alguém a esta aba.
+   ========================================================================== */
+
+function htmlLog() {
+  if (erroLog) {
+    return '<div class="faixa"><div class="erro"><b>Não foi possível ler o Log.</b>' +
+      '<code>' + esc(erroLog) + '</code></div></div>';
+  }
+  if (!log) return '<p class="carregando">Carregando log…</p>';
+
+  var cartao = function (num, rotulo, alerta) {
+    return '<div class="cartao' + (alerta && num ? ' alerta' : '') + '">' +
+      '<div class="cartao-num">' + num + '</div><div class="cartao-rot">' + rotulo + '</div></div>';
+  };
+
+  /* O botão só aparece quando há o que marcar. Botão permanente que às vezes não faz nada
+     ensina a ignorá-lo, e este precisa ser notado no dia em que importa. */
+  var marcar = log.naoVistos
+    ? '<button class="btn" onclick="marcarLogComoVisto()" id="btnLogVisto" ' +
+      'title="Zera o contador do menu. As falhas continuam na lista.">' +
+      'Marcar ' + log.naoVistos + ' como visto</button>'
+    : '';
+
+  var vistoEm = log.vistoAte
+    ? '<p class="log-visto">Conferido até ' + fmtDataHora(log.vistoAte) + '.</p>'
+    : '';
+
+  return '<div class="pagina">' +
+    '<div class="secao"><div class="cartoes">' +
+      cartao(log.naoVistos, 'não vistas', true) +
+      cartao(log.erros, 'falharam em ' + log.dias + 'd') +
+      cartao(log.ok, 'entraram') +
+      cartao(log.ignorados, 'já processados') +
+      cartao(log.naJanela, 'arquivos') +
+    '</div>' + (marcar ? '<div class="log-acoes">' + marcar + '</div>' : '') + vistoEm + '</div>' +
+    htmlLogFalhas() +
+    htmlLogRolagem() +
+  '</div>';
+}
+
+/**
+ * Zera o contador do menu — e **não** esconde nada da lista.
+ *
+ * O caso que motivou: os arquivos foram corrigidos e reprocessados, a pasta `erros/` está
+ * vazia, e as linhas antigas do Log continuavam marcando 4 no menu. O que estava errado era
+ * o contador significar "erros na janela", um número que só envelhece. Agora ele significa
+ * "falhas que eu ainda não vi", que uma ação zera — e falha nova levanta de novo, sozinha.
+ */
+function marcarLogComoVisto() {
+  var btn = document.getElementById('btnLogVisto');
+  if (btn) { btn.disabled = true; btn.textContent = 'Marcando…'; }
+
+  google.script.run
+    .withSuccessHandler(function () { carregarLog(); })
+    .withFailureHandler(function (err) {
+      carregarLog();
+      document.getElementById('aviso').innerHTML =
+        '<div class="aviso">Não foi possível marcar como visto: ' + esc(mensagem(err)) + '</div>';
+    })
+    .marcarLogVisto();
+}
+
+/**
+ * O que falhou, com a mensagem inteira.
+ *
+ * A mensagem não é truncada: ela é o produto desta tela. `ErroValidacao: "tipo" =
+ * "ponto_forte" não está na lista` diz exatamente o que corrigir, e cortá-la em 60
+ * caracteres devolveria o usuário à pasta de erros do Drive.
+ */
+function htmlLogFalhas() {
+  var falhas = log.linhas.filter(function (l) { return l.resultado === 'erro'; });
+
+  if (!falhas.length) {
+    return '<div class="secao"><p class="secao-titulo">Falhas</p>' +
+      '<p class="vazio-msg">Nenhuma captura falhou nos últimos ' + log.dias + ' dias.</p></div>';
+  }
+
+  return '<div class="secao"><p class="secao-titulo">Falhas' +
+      '<span class="secao-num">' + falhas.length + '</span></p>' +
+    '<div class="log-falhas">' + falhas.map(function (l) {
+      return '<div class="log-falha">' +
+          '<div class="log-falha-cab">' +
+            '<b>' + esc(l.arquivo || '(sem nome)') + '</b>' +
+            '<span class="log-quando">' + fmtDataHora(l.quando) + '</span>' +
+          '</div>' +
+          '<div class="log-msg">' + esc(l.mensagem || '(sem mensagem)') + '</div>' +
+        '</div>';
+    }).join('') + '</div>' +
+    '<p class="log-dica">O arquivo está na pasta <b>erros</b> do Drive. Corrigir o campo ' +
+      'e movê-lo de volta para <b>inbox</b> refaz a entrada — a dedupe é por arquivo, ' +
+      'então nada duplica.</p>' +
+  '</div>';
+}
+
+/** A rolagem completa da janela, para auditar o que entrou. */
+function htmlLogRolagem() {
+  if (!log.linhas.length) {
+    return '<div class="secao"><p class="secao-titulo">Movimento</p>' +
+      '<p class="vazio-msg">Nada processado nos últimos ' + log.dias + ' dias. ' +
+      (log.total ? 'A aba tem ' + log.total + ' linha(s) mais antigas.' : 'A aba está vazia.') +
+      '</p></div>';
+  }
+
+  var corte = log.cortadas
+    ? ocultos(log.cortadas, 'teto de ' + LOG_MAX_LINHAS_UI + ' linhas por carga')
+    : '';
+
+  return '<div class="secao"><p class="secao-titulo">Movimento' +
+      '<span class="secao-num">' + log.linhas.length + '</span>' + corte + '</p>' +
+    '<div class="log-lista">' + log.linhas.map(function (l) {
+      return '<div class="log-linha">' +
+          '<span class="pill log-' + esc(l.resultado || 'sem') + '">' +
+            esc(l.resultado || '—') + '</span>' +
+          '<span class="log-arquivo">' + esc(l.arquivo || '(sem nome)') + '</span>' +
+          '<span class="log-tipo">' + esc(l.tipo || '—') + '</span>' +
+          '<span class="log-quando">' + fmtDataHora(l.quando) + '</span>' +
+        '</div>';
+    }).join('') + '</div>' +
+  '</div>';
+}
 
 /* ==========================================================================
    UTILITÁRIOS
@@ -3075,7 +4257,10 @@ function cliqueForaFecha(ev) {
 }
 
 document.addEventListener('keydown', function (ev) {
-  if (ev.key === 'Escape') { fecharModal(); cancelarDelegacao(); fecharResumo(); return; }
+  if (ev.key === 'Escape') {
+    fecharModal(); fecharModalAnotacao(); cancelarDelegacao(); fecharResumo();
+    return;
+  }
 
   /* "/" foca a busca, como em quase todo app de lista. Não sequestra a tecla enquanto
      alguém está digitando em outro campo. */
@@ -3132,11 +4317,189 @@ function botaoSalvar(ocupado) {
   btn.textContent = ocupado ? 'Salvando…' : (idEmEdicao ? 'Salvar' : 'Criar card');
 }
 
+/* ==========================================================================
+   FORMULÁRIO DE ANOTAÇÃO
+
+   O mesmo caminho da skill, pela porta do front: `createAnotacao` é a mesma
+   função que o `processarInbox` chama depois de traduzir o envelope. A diferença
+   é que aqui não há intermediário — o erro de validação volta no formulário, em
+   vez de na aba Log dez minutos depois.
+   ========================================================================== */
+
+function abrirModalAnotacao() {
+  document.getElementById('erroAnotacao').innerHTML = '';
+  document.getElementById('formAnotacao').reset();
+
+  /* Só ativos, e sem o "mais quem já está" do seletor de card: anotação nasce agora, e
+     registrar feedback de quem saiu do time é o que a camada recusa de propósito. */
+  document.getElementById('a-pessoa_id').innerHTML =
+    '<option value="">—</option>' + pessoasAtivas.map(function (p) {
+      return '<option value="' + esc(p.id) + '">' + esc(p.nome) + '</option>';
+    }).join('');
+
+  /* Remontado a cada abertura, como o de delegado: reset() não desmarca checkbox que o
+     JS criou. */
+  document.getElementById('a-valores').innerHTML = VALORES.map(function (v) {
+    return '<label><input type="checkbox" value="' + esc(v.campo) + '">' +
+      esc(v.rotulo) + '</label>';
+  }).join('');
+
+  botaoSalvarAnotacao(false);
+  document.getElementById('overlayAnotacao').classList.add('aberto');
+  document.getElementById('a-pessoa_id').focus();
+}
+
+function fecharModalAnotacao() {
+  document.getElementById('overlayAnotacao').classList.remove('aberto');
+}
+
+function cliqueForaFechaAnotacao(ev) {
+  if (ev.target.id === 'overlayAnotacao') fecharModalAnotacao();
+}
+
+function salvarAnotacao(ev) {
+  ev.preventDefault();
+  botaoSalvarAnotacao(true);
+  document.getElementById('erroAnotacao').innerHTML = '';
+
+  google.script.run
+    .withSuccessHandler(aoSalvarAnotacao)
+    .withFailureHandler(aoFalharSalvarAnotacao)
+    .createAnotacao(montarPayloadDeAnotacao());
+}
+
+/**
+ * Payload no formato do schema, e não do envelope.
+ *
+ * A tradução `tipo_nota`→`tipo` e `valores[]`→booleanos existe na borda da ingestão porque
+ * a skill fala a língua da captura. O front não precisa dela: fala direto o `01`, que é o
+ * que o `createAnotacao` espera. Mandar o envelope daqui seria inventar um dialeto a mais.
+ */
+function montarPayloadDeAnotacao() {
+  var payload = {
+    pessoa_id: document.getElementById('a-pessoa_id').value,
+    nota: document.getElementById('a-nota').value,
+    tipo: document.getElementById('a-tipo').value,
+    contexto: document.getElementById('a-contexto').value,
+    data: document.getElementById('a-data').value
+  };
+
+  /* Todos os quatro sempre, e não só os marcados: é a mesma convenção da ingestão — mandar
+     os valores declara o conjunto inteiro, então o que não veio é `false` e não "não mexi". */
+  var marcados = idsDeCsv(idsMarcadosEm('#a-valores'));
+  VALORES.forEach(function (v) {
+    payload[v.campo] = marcados.indexOf(v.campo) >= 0;
+  });
+
+  return payload;
+}
+
+function aoSalvarAnotacao() {
+  botaoSalvarAnotacao(false);
+  fecharModalAnotacao();
+  /* Em silêncio: a tela de Anotações já está montada, e trocá-la por "carregando" para
+     acrescentar uma linha piora o que funciona. */
+  carregarAnotacoesEmSilencio();
+}
+
+function aoFalharSalvarAnotacao(err) {
+  botaoSalvarAnotacao(false);
+  document.getElementById('erroAnotacao').innerHTML =
+    '<div class="erro-form">' + esc(mensagem(err)) + '</div>';
+}
+
+function botaoSalvarAnotacao(ocupado) {
+  var btn = document.getElementById('btnSalvarAnotacao');
+  btn.disabled = ocupado;
+  btn.textContent = ocupado ? 'Salvando…' : 'Criar anotação';
+}
+
+/* ==========================================================================
+   FORMULÁRIO DE NOTA
+
+   O recado solto. As duas ligações começam vazias porque o caso normal é nota
+   sem nenhuma — "lembrar de revisar o processo de deploy" não é sobre ninguém.
+   ========================================================================== */
+
+function abrirModalRecado() { abrirModalNota(); }
+
+function abrirModalNota() {
+  document.getElementById('erroNota').innerHTML = '';
+  document.getElementById('formNota').reset();
+
+  /* Todas as pessoas, não só as ativas: nota sobre quem acabou de sair do time é legítima
+     ("X pediu demissão"), e a camada aceita — é a diferença deliberada em relação ao
+     createAnotacao, que exige pessoa ativa. Inativo aparece marcado. */
+  document.getElementById('n-pessoa_id').innerHTML =
+    '<option value="">— nenhuma —</option>' + pessoas.map(function (p) {
+      return '<option value="' + esc(p.id) + '">' + esc(p.nome) +
+        (p.ativo ? '' : ' (inativo)') + '</option>';
+    }).join('');
+
+  /* Só cards ativos: nota nova sobre demanda concluída é caso raro, e a lista inteira com
+     o histórico de Done tornaria o select inútil de rolar. */
+  document.getElementById('n-card_id').innerHTML =
+    '<option value="">— nenhuma —</option>' + ativos()
+      .slice()
+      .sort(function (a, b) {
+        return String(a.titulo || '').localeCompare(String(b.titulo || ''), 'pt-BR');
+      })
+      .map(function (c) {
+        return '<option value="' + esc(c.id) + '">' + esc(c.titulo || '(sem título)') + '</option>';
+      }).join('');
+
+  botaoSalvarNota(false);
+  document.getElementById('overlayNota').classList.add('aberto');
+  document.getElementById('n-texto').focus();
+}
+
+function fecharModalNota() {
+  document.getElementById('overlayNota').classList.remove('aberto');
+}
+
+function cliqueForaFechaNota(ev) {
+  if (ev.target.id === 'overlayNota') fecharModalNota();
+}
+
+function salvarNota(ev) {
+  ev.preventDefault();
+  botaoSalvarNota(true);
+  document.getElementById('erroNota').innerHTML = '';
+
+  google.script.run
+    .withSuccessHandler(function () {
+      botaoSalvarNota(false);
+      fecharModalNota();
+      carregarNotas();
+      /* Se a aba aberta não é Notas, o contador do menu ainda precisa subir. */
+      if (visao !== 'notas') atualizarSino();
+    })
+    .withFailureHandler(function (err) {
+      botaoSalvarNota(false);
+      document.getElementById('erroNota').innerHTML =
+        '<div class="erro-form">' + esc(mensagem(err)) + '</div>';
+    })
+    .createNota({
+      texto: document.getElementById('n-texto').value,
+      pessoa_id: document.getElementById('n-pessoa_id').value,
+      card_id: document.getElementById('n-card_id').value,
+      data: document.getElementById('n-data').value
+    });
+}
+
+function botaoSalvarNota(ocupado) {
+  var btn = document.getElementById('btnSalvarNota');
+  btn.disabled = ocupado;
+  btn.textContent = ocupado ? 'Salvando…' : 'Criar nota';
+}
+
 popularSelects();
 pintarBotaoTema();
 carregarPessoas();
 carregar();
 carregarAgenda();
+carregarLog();
+carregarNotas();
 </script>
 </body>
 </html>

@@ -61,6 +61,7 @@ function montar() {
   projeto.setupKanban();
   projeto.setupPessoas();
   projeto.setupAnotacoes();
+  projeto.setupNotas();
   projeto.setupLog();
 
   const contagens = semear(projeto);
@@ -245,7 +246,7 @@ function iniciar() {
     console.log('  http://localhost:' + PORTA);
     console.log('');
     console.log('  ' + contagens.cards + ' cards · ' + contagens.pessoas + ' pessoas · ' +
-      contagens.anotacoes + ' anotações (tudo fictício)');
+      contagens.anotacoes + ' anotações · ' + contagens.notas + ' notas (tudo fictício)');
     console.log('  ' + publicas.length + ' funções expostas ao navegador');
     console.log('');
     console.log('  Painéis:   /?view=semana   /?view=mes');

@@ -545,14 +545,300 @@ function lerAnotacoes_() {
   return lerAba_(ANOTACOES_TAB_NAME, 'setupAnotacoes', COLUNAS_ANOTACOES);
 }
 
+/* ==========================================================================
+   NOTAS — o recado solto
+   --------------------------------------------------------------------------
+   Aba separada de Anotações de propósito: ver o comentário de COLUNAS_NOTAS.
+   Aqui não há `tipo` nem `valor_*` porque não há juízo — e é justamente por
+   isso que "Gustavo comentou que estava cansado" cabe aqui e não lá.
+
+   As duas FKs são opcionais e independentes. `pessoa_id` exige apenas que a
+   pessoa EXISTA, e não que esteja ativa: nota sobre quem acabou de sair do time
+   é legítima ("X pediu demissão") e não vai para fila de 1:1 nenhuma. É a
+   diferença deliberada em relação ao createAnotacao, que exige pessoa ativa.
+   ========================================================================== */
+
 /**
- * Lê uma aba inteira e devolve objetos, descartando linha sem `id`.
+ * As notas, mais recentes primeiro.
+ *
+ * Devolve **tudo**, arquivadas incluídas, com a flag: quem recorta é a tela. Filtrar aqui
+ * tornaria a nota arquivada inalcançável pelo front sem uma segunda função.
+ *
+ * @return {Object[]} notas no formato de transporte.
+ */
+function listNotas() {
+  /*
+   * Três critérios, e o terceiro é o que sempre resolve.
+   *
+   * Empate de `data` é o caso comum — várias notas do mesmo dia. `criado_em` desempata na
+   * maioria, mas ele atravessa com precisão de SEGUNDO (`ISO_DATA_HORA`), e duas notas
+   * escritas no mesmo segundo empatam de novo. Então o último critério é a posição na aba:
+   * a inserção é sempre append, logo ordem de linha **é** ordem de escrita, e essa nunca
+   * empata. Invertida, porque a tela quer a mais nova primeiro.
+   */
+  return lerAba_(NOTAS_TAB_NAME, 'setupNotas', COLUNAS_NOTAS)
+    .map(function (nota, i) { return { nota: nota, linha: i }; })
+    .sort(function (a, b) {
+      const porData = String(b.nota.data || '').localeCompare(String(a.nota.data || ''));
+      if (porData !== 0) return porData;
+
+      const porCriacao = String(b.nota.criado_em || '').localeCompare(String(a.nota.criado_em || ''));
+      if (porCriacao !== 0) return porCriacao;
+
+      return b.linha - a.linha;
+    })
+    .map(function (item) { return item.nota; });
+}
+
+/**
+ * Cria uma nota.
+ *
+ * @param {Object} payload `texto` obrigatório. `pessoa_id`, `card_id`, `data` opcionais.
+ *     `data` ausente cai para hoje. Campos gerados não podem vir.
+ * @return {Object} A nota criada, com `id`.
+ * @throws ErroValidacao, ErroNaoEncontrado, ErroDuplicado, ErroLock.
+ */
+function createNota(payload) {
+  const nota = validarPayloadDeNota_(payload);
+
+  // FKs conferidas antes do lock: é leitura, e segurá-lo durante ela não protege nada.
+  if (nota.pessoa_id) exigirPessoaExistente_(nota.pessoa_id);
+  if (nota.card_id) exigirCardExistente_(nota.card_id);
+
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) {
+    throw erro_(ERRO_LOCK, 'outra escrita está em andamento. Tente de novo em alguns segundos.');
+  }
+
+  try {
+    return inserirComDedupe_(abaNotas_(), COLUNAS_NOTAS, nota, 'nota');
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Arquiva ou desarquiva uma nota.
+ *
+ * Estreito de propósito, como o `registrar1a1`: não é um `updateNota` que mexe no texto.
+ * Nota é registro de um momento, e reescrever o passado é outra decisão — se o texto estiver
+ * errado, arquiva e escreve outra.
+ *
+ * @param {string} id
+ * @param {boolean} arquivada
+ * @return {Object} A nota já atualizada.
+ * @throws ErroValidacao, ErroNaoEncontrado, ErroLock.
+ */
+function arquivarNota(id, arquivada) {
+  const alvo = texto_(id);
+  if (!alvo) throw erro_(ERRO_VALIDACAO, 'arquivarNota: "id" é obrigatório.');
+
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) {
+    throw erro_(ERRO_LOCK, 'outra escrita está em andamento. Tente de novo em alguns segundos.');
+  }
+
+  try {
+    const sheet = abaNotas_();
+    const linha = linhaComValor_(sheet, colunaDe_(COLUNAS_NOTAS, 'id'), alvo);
+    if (!linha) {
+      throw erro_(ERRO_NAO_ENCONTRADO, 'nota "' + alvo + '" não existe na aba ' + NOTAS_TAB_NAME + '.');
+    }
+
+    // Lê a linha, muta e regrava inteira — o mesmo padrão do updateCard. Duas escritas de
+    // célula seriam duas chamadas de API, e `arquivada` e `atualizado_em` não são vizinhas.
+    const valores = sheet.getRange(linha, 1, 1, COLUNAS_NOTAS.length).getValues()[0];
+    valores[colunaDe_(COLUNAS_NOTAS, 'arquivada') - 1] = arquivada === true;
+    valores[colunaDe_(COLUNAS_NOTAS, 'atualizado_em') - 1] = new Date();
+
+    sheet.getRange(linha, 1, 1, COLUNAS_NOTAS.length).setValues([valores]);
+    SpreadsheetApp.flush();
+
+    return linhaParaObjeto_(
+      valores, COLUNAS_NOTAS,
+      SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone()
+    );
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function validarPayloadDeNota_(payload) {
+  const nota = normalizarPayload_(COLUNAS_NOTAS, payload, 'createNota');
+
+  if (!nota.texto) throw erro_(ERRO_VALIDACAO, 'createNota: "texto" é obrigatório.');
+  if (!nota.data) nota.data = hojeMeiaNoite_();
+
+  return nota;
+}
+
+/**
+ * A pessoa existe? — sem exigir que esteja ativa.
+ *
+ * Separado do `exigirPessoaAtiva_` porque a regra é outra: feedback para quem saiu do time
+ * não apareceria em tela nenhuma, mas nota sobre quem saiu é informação legítima.
+ */
+function exigirPessoaExistente_(pessoaId) {
+  const sheet = abaPorNome_(PESSOAS_TAB_NAME, 'setupPessoas');
+  if (!linhaComValor_(sheet, colunaDe_(COLUNAS_PESSOAS, 'id'), pessoaId)) {
+    throw erro_(
+      ERRO_NAO_ENCONTRADO,
+      'pessoa_id "' + pessoaId + '" não existe na aba ' + PESSOAS_TAB_NAME + '.'
+    );
+  }
+}
+
+/**
+ * O card existe?
+ *
+ * Note que o `delegado_para` do createCard **não** faz esta conferência (ver `02`). Aqui ela
+ * entra porque é barata e porque a nota é o único lugar que referencia card por id vindo do
+ * cliente — id solto viraria uma referência pendurada que ninguém acha depois.
+ */
+function exigirCardExistente_(cardId) {
+  const sheet = abaKanban_();
+  if (!linhaComValor_(sheet, colunaDe_(COLUNAS, 'id'), cardId)) {
+    throw erro_(ERRO_NAO_ENCONTRADO, 'card_id "' + cardId + '" não existe na aba ' + TAB_NAME + '.');
+  }
+}
+
+function abaNotas_() {
+  return abaPorNome_(NOTAS_TAB_NAME, 'setupNotas');
+}
+
+/* ==========================================================================
+   LOG DA INGESTÃO — LEITURA
+   --------------------------------------------------------------------------
+   Quem escreve é o `gravarLog_`, na Ingestão. Aqui só se lê, para a tela.
+
+   Existe porque toda captura de skill confirma ANTES de ser validada: a skill
+   grava o arquivo e diz "anotado", e a validação só acontece no processarInbox,
+   até 10 minutos depois. Quando ela falha, o fracasso ficava escrito aqui e em
+   `erros/` sem nada na tela — em 03/08/2026 três anotações morreram assim e só
+   apareceram porque alguém foi olhar. Ver `05`.
+   ========================================================================== */
+
+/** Janela padrão da tela de Log. Auditoria de ontem serve; de junho, não. */
+const LOG_DIAS_JANELA = 7;
+
+/**
+ * Teto de linhas devolvidas.
+ *
+ * O Log cresce para sempre e nada o apara. Sem teto, um dia de reprocessamento em massa
+ * mandaria milhares de linhas pelo `google.script.run` para desenhar uma lista que ninguém
+ * rola até o fim. O que foi cortado é **declarado**, nunca omitido.
+ */
+const LOG_MAX_LINHAS = 200;
+
+/**
+ * Até quando o log já foi conferido, em UserProperties.
+ *
+ * Existe porque `erros na janela` é um número que não pode baixar — só envelhecer. Depois de
+ * corrigir os arquivos e reprocessá-los, a pasta `erros/` fica vazia e o contador continua
+ * marcando 4, porque as linhas antigas do Log seguem lá. O marcador transforma o contador em
+ * **"falhas que eu ainda não vi"**, que é um número que a ação zera.
+ *
+ * `PropertiesService` não pede escopo, como no tema.
+ */
+const PROP_LOG_VISTO = 'LOG_VISTO_ATE';
+
+/**
+ * O log recente da ingestão, mais novo primeiro.
+ *
+ * As contagens são da **janela**, não da aba inteira: somar o histórico faria um erro de
+ * junho pedir atenção para sempre.
+ *
+ * `naoVistos` é o que vai no menu; `erros` continua sendo o total da janela, porque a lista
+ * mostra todos. **Marcar como visto zera o contador e não esconde nada** — se escondesse,
+ * seria a mesma perda silenciosa que esta tela existe para consertar.
+ *
+ * @param {number} [dias=LOG_DIAS_JANELA] Tamanho da janela.
+ * @return {{linhas: Object[], dias: number, total: number, naJanela: number,
+ *           cortadas: number, ok: number, ignorados: number, erros: number,
+ *           naoVistos: number, vistoAte: string}}
+ */
+function listLog(dias) {
+  const janela = Number(dias) > 0 ? Math.floor(Number(dias)) : LOG_DIAS_JANELA;
+
+  // Âncora em `quando` e não em `id`: a aba Log não tem coluna de id.
+  const todas = lerAba_(LOG_TAB_NAME, 'setupLog', COLUNAS_LOG, 'quando');
+
+  const corte = Utilities.formatDate(
+    new Date(Date.now() - janela * 86400000),
+    SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(),
+    ISO_DATA
+  );
+
+  // `quando` atravessa como 'yyyy-MM-ddTHH:mm:ss', então comparar os 10 primeiros
+  // caracteres com uma data ISO é comparação de texto e ordena certo.
+  const naJanela = todas
+    .filter(function (l) { return String(l.quando).slice(0, 10) >= corte; })
+    .sort(function (a, b) { return String(b.quando).localeCompare(String(a.quando)); });
+
+  const conta = function (resultado) {
+    return naJanela.filter(function (l) { return l.resultado === resultado; }).length;
+  };
+
+  // Comparação de texto entre dois ISO 'yyyy-MM-ddTHH:mm:ss' ordena certo, e é o mesmo
+  // formato dos dois lados: `quando` sai do mapeador e `vistoAte` foi gravado por aqui.
+  const vistoAte = logVistoAte_();
+  const naoVistos = naJanela.filter(function (l) {
+    return l.resultado === 'erro' && (!vistoAte || String(l.quando) > vistoAte);
+  }).length;
+
+  return {
+    linhas: naJanela.slice(0, LOG_MAX_LINHAS),
+    dias: janela,
+    total: todas.length,
+    naJanela: naJanela.length,
+    cortadas: Math.max(0, naJanela.length - LOG_MAX_LINHAS),
+    ok: conta('ok'),
+    ignorados: conta('ignorado'),
+    erros: conta('erro'),
+    naoVistos: naoVistos,
+    vistoAte: vistoAte
+  };
+}
+
+function logVistoAte_() {
+  return String(
+    PropertiesService.getUserProperties().getProperty(PROP_LOG_VISTO) || ''
+  ).trim();
+}
+
+/**
+ * Marca o log como conferido até agora.
+ *
+ * Grava o instante, e não um "zerado: true": um erro que chegar depois disto levanta o
+ * contador de novo sozinho, sem ninguém precisar destravar nada. Flag booleana exigiria
+ * lembrar de limpá-la, e ela seria esquecida exatamente no dia em que importasse.
+ *
+ * @return {{vistoAte: string, naoVistos: number}} O estado depois de marcar.
+ */
+function marcarLogVisto() {
+  const agora = Utilities.formatDate(
+    new Date(),
+    SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(),
+    ISO_DATA_HORA
+  );
+
+  PropertiesService.getUserProperties().setProperty(PROP_LOG_VISTO, agora);
+  return { vistoAte: agora, naoVistos: 0 };
+}
+
+/**
+ * Lê uma aba inteira e devolve objetos, descartando linha sem o campo-âncora.
  *
  * Sem contador de ignoradas, ao contrário do listCards: nas abas que não recebem digitação
- * manual, linha sem id é grade sobrando, não sintoma de uso indevido.
+ * manual, linha sem âncora é grade sobrando, não sintoma de uso indevido.
+ *
+ * @param {string} [ancora='id'] Campo que precisa estar preenchido para a linha valer. A
+ *     aba `Log` **não tem `id`** — a primeira coluna dela é `quando`, e o padrão descartaria
+ *     o log inteiro em silêncio.
  */
-function lerAba_(nome, funcaoDeSetup, colunas) {
+function lerAba_(nome, funcaoDeSetup, colunas, ancora) {
   const sheet = abaPorNome_(nome, funcaoDeSetup);
+  const campo = ancora || 'id';
 
   const totalLinhas = sheet.getMaxRows() - 1;
   if (totalLinhas < 1) return [];
@@ -562,7 +848,7 @@ function lerAba_(nome, funcaoDeSetup, colunas) {
 
   return linhas
     .map(function (linha) { return linhaParaObjeto_(linha, colunas, tz); })
-    .filter(function (obj) { return obj.id; });
+    .filter(function (obj) { return obj[campo]; });
 }
 
 /** "id1,id2" → ['id1','id2']. Formato de FK multivalor do `delegado_para`. */

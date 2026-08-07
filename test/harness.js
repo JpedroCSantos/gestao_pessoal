@@ -51,6 +51,7 @@ function comAbas(opcoes = {}) {
   ctx.setupKanban();
   ctx.setupPessoas();
   ctx.setupAnotacoes();
+  ctx.setupNotas();
   ctx.setupLog();
   return ctx;
 }

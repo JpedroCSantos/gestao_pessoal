@@ -161,12 +161,25 @@ function criarPasta(nome, mae) {
     createFile(nomeArquivo, conteudo) {
       return criarArquivo(nomeArquivo, conteudo, pasta);
     },
+    createFolder(nomeSubpasta) {
+      return criarPasta(nomeSubpasta, pasta);
+    },
     _arquivos: arquivos,
     _subpastas: subpastas,
   };
   if (mae) mae._subpastas.push(pasta);
+  pastasPorIdGlobal[pasta.getId()] = pasta;
   return pasta;
 }
+
+/**
+ * Índice global id→pasta.
+ *
+ * Existe porque pasta criada em runtime (o `createFolder` do `pastaDaPessoa_`) precisa ser
+ * encontrável pelo `DriveApp.getFolderById` depois — o índice do `criarAmbiente` só conhece
+ * as pastas passadas na montagem.
+ */
+const pastasPorIdGlobal = {};
 
 /** Índice global id→arquivo, para o DriveApp.getFileById do dublê. */
 const arquivosPorId = {};
@@ -174,13 +187,18 @@ const arquivosPorId = {};
 function criarArquivo(nome, conteudo, pasta) {
   let id = 'file-' + (criarArquivo.seq = (criarArquivo.seq || 0) + 1);
   let atual = pasta;
+  let corpo = conteudo;
   const file = {
+    /* Conteúdo mutável porque Doc recebe append: o `comentar1a1` acrescenta parágrafo a um
+       arquivo que já existe. Com conteúdo imutável, o dublê aceitaria a escrita e a leitura
+       seguinte devolveria o texto antigo — o pior tipo de dublê, o que passa e mente. */
+    _escrever: (t) => { corpo = t; },
     getId: () => id,
     getName: () => nome,
     getUrl: () => 'https://drive.fake/' + id,
     getLastUpdated: () => new Date(2026, 0, 1),
     getParents: () => iterador([atual]),
-    getBlob: () => ({ getDataAsString: () => conteudo }),
+    getBlob: () => ({ getDataAsString: () => corpo }),
     moveTo(destino) {
       const i = atual._arquivos.indexOf(file);
       if (i >= 0) atual._arquivos.splice(i, 1);
@@ -194,11 +212,43 @@ function criarArquivo(nome, conteudo, pasta) {
       return file;
     },
     _pasta: () => atual,
-    _conteudo: () => conteudo,
+    _conteudo: () => corpo,
   };
   pasta._arquivos.push(file);
   arquivosPorId[id] = file;
   return file;
+}
+
+/**
+ * Onde o `DocumentApp.create` larga o arquivo.
+ *
+ * No Google ele nasce na raiz do Drive, e o projeto o move para a pasta certa em seguida.
+ * Reproduzir isso importa: um dublê que criasse já no lugar certo esconderia o dia em que
+ * alguém esquecer o `moveTo` — e o Doc iria para a raiz do Drive dele, em produção.
+ */
+const raizDoDrive = criarPasta('__raiz__');
+
+/**
+ * Um Doc sobre um arquivo, tratado como texto puro.
+ *
+ * O projeto só lê `getText()` e só escreve `appendParagraph`. `setHeading` devolve o
+ * parágrafo e não guarda nada: o que os testes afirmam é o texto que sai, e formatação é do
+ * Google. Guardar o nível seria o dublê fingindo capacidade que ninguém verifica.
+ */
+function docFake(file) {
+  const doc = {
+    getId: file.getId,
+    getBody: () => ({
+      getText: () => file._conteudo(),
+      appendParagraph(texto) {
+        const atual = file._conteudo();
+        file._escrever(atual ? atual + '\n' + texto : texto);
+        return { setHeading: () => ({ setHeading: () => null }) };
+      },
+    }),
+    saveAndClose: () => doc,
+  };
+  return doc;
 }
 
 function iterador(itens) {
@@ -317,21 +367,33 @@ function criarAmbiente(opcoes = {}) {
     },
     DriveApp: {
       getFolderById(id) {
-        if (!pastasPorId[id]) throw new Error(`pasta inexistente: ${id}`);
-        return pastasPorId[id];
+        // Cai no índice global depois do local: pasta criada em runtime (o `createFolder`
+        // do `pastaDaPessoa_`) não estava no `opcoes.pastas` da montagem.
+        const pasta = pastasPorId[id] || pastasPorIdGlobal[id];
+        if (!pasta) throw new Error(`pasta inexistente: ${id}`);
+        return pasta;
       },
       getFileById(id) {
         if (!arquivosPorId[id]) throw new Error(`arquivo inexistente: ${id}`);
         return arquivosPorId[id];
       },
     },
-    // O corpo do "Doc" é o conteúdo com que o arquivo fake foi criado. Basta para o que o
-    // projeto faz com ele: ler o texto inteiro e devolver.
+    /*
+     * Doc como texto puro: o projeto só lê `getText()` e só escreve `appendParagraph`.
+     * `setHeading` devolve o próprio parágrafo e não guarda o nível — o que os testes
+     * afirmam é o TEXTO que sai, e formatação de Doc é do Google. Guardar o nível aqui
+     * seria dublê fingindo capacidade que ninguém verifica.
+     */
     DocumentApp: {
       openById(id) {
         if (!arquivosPorId[id]) throw new Error(`documento inexistente: ${id}`);
-        return { getBody: () => ({ getText: () => arquivosPorId[id]._conteudo() }) };
+        return docFake(arquivosPorId[id]);
       },
+      create(nome) {
+        // Nasce na raiz do Drive, como no Google — o projeto move para a pasta depois.
+        return docFake(criarArquivo(nome, '', raizDoDrive));
+      },
+      ParagraphHeading: { NORMAL: 'NORMAL', HEADING3: 'HEADING3' },
     },
     // Dublê raso de propósito: o que o projeto faz com HTML é escolher *qual* conteúdo
     // servir, e é isso que os testes afirmam. Renderização é do Google.

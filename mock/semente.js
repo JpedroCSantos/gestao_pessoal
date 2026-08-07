@@ -158,12 +158,29 @@ const ANOTACOES = [
     nota: 'Fica esperando validação para tarefas que já sabe fazer.',
     contexto: 'Parou o ajuste do painel para perguntar se podia mexer no filtro.' },
 
+  /* Bruno é o caso de REINCIDÊNCIA: `qualidade` como melhoria em três meses civis
+     distintos. Existe para a tela de Anotações ter o que mostrar no nível de alarme — sem
+     um caso semeado, a seção só exercitaria o estado vazio, e ninguém veria o que ela faz.
+     Os deslocamentos são grandes de propósito: episódio da mesma semana é um episódio, e a
+     contagem é de MESES distintos justamente para não confundir os dois. */
   { quem: 'Bruno Tavares', tipo: 'melhoria', d: -8, v: ['qualidade'],
     nota: 'Subiu sem testar o caminho de erro.',
     contexto: 'O formulário quebrava com campo vazio; passou no happy path e seguiu.' },
+  { quem: 'Bruno Tavares', tipo: 'melhoria', d: -41, v: ['qualidade'],
+    nota: 'De novo sem cenário de exceção — combinamos isso no 1:1 passado.',
+    contexto: 'A carga de arquivo aceitou linha sem CNPJ e derrubou o job de madrugada.' },
+  { quem: 'Bruno Tavares', tipo: 'melhoria', d: -72, v: ['qualidade'],
+    nota: 'Testa só o caminho felizes.',
+    contexto: 'O relatório de glosas quebrou com competência vazia na primeira semana.' },
   { quem: 'Bruno Tavares', tipo: 'positivo', d: -30, v: ['colaboracao'],
     nota: 'Sentou com o Diego para destravar o ambiente dele.',
     contexto: 'Perdeu a tarde e não reclamou.' },
+
+  /* Dois meses, não três: é o nível "sinal", para as duas intensidades ficarem visíveis
+     lado a lado na tela. */
+  { quem: 'Diego Fontes', tipo: 'melhoria', d: -47, v: ['autogestao'],
+    nota: 'Continua sem dizer quanto tempo acha que leva.',
+    contexto: 'Pegou o ajuste do relatório sem estimar, e a semana virou duas.' },
 
   { quem: 'Camila Nunes', tipo: 'positivo', d: -2, v: ['autogestao', 'qualidade'],
     nota: 'Reorganizou o próprio backlog quando a prioridade mudou.',
@@ -252,8 +269,49 @@ function semear(projeto) {
   const idsPorNome = semearPessoas(projeto);
   const cards = semearCards(projeto, idsPorNome);
   const anotacoes = semearAnotacoes(projeto, idsPorNome);
+  const notas = semearNotas(projeto, idsPorNome);
 
-  return { pessoas: Object.keys(idsPorNome).length, cards: cards, anotacoes: anotacoes };
+  return {
+    pessoas: Object.keys(idsPorNome).length,
+    cards: cards, anotacoes: anotacoes, notas: notas,
+  };
+}
+
+/**
+ * Notas: o recado solto, com as quatro formas que ele assume.
+ *
+ * A semente cobre as quatro de propósito — nenhuma ligação, só pessoa, só demanda, e as
+ * duas — porque é a combinação que a tela precisa desenhar e é onde a distinção com
+ * `Anotações` fica visível: nenhuma delas tem tipo nem valor, e nenhuma é feedback.
+ */
+const NOTAS = [
+  { texto: 'Gustavo comentou que estava cansado. Ver como ele está na semana que vem.',
+    quem: 'Diego Fontes', d: -1 },
+  { texto: 'Camila gostaria de participar da migração do relatório de capacidade.',
+    quem: 'Camila Nunes', card: 6, d: -1 },
+  { texto: 'Lembrar de revisar o processo de deploy antes do fechamento do mês.', d: -2 },
+  { texto: 'O cliente do Aurora mencionou de passagem que quer um relatório mensal. Não é ' +
+      'demanda ainda — confirmar na próxima call antes de abrir card.', card: 0, d: -3 },
+  { texto: 'Ana perguntou sobre trilha de carreira. Não é feedback, é assunto de 1:1.',
+    quem: 'Ana Ribeiro', d: -5 },
+  { texto: 'Ideia para a retro: usar o tempo de ciclo do dashboard como abertura.',
+    d: -9, arquivada: true },
+];
+
+function semearNotas(projeto, idsPorNome) {
+  const objetos = NOTAS.map((n, i) => ({
+    id: 'nota-' + String(i + 1).padStart(2, '0'),
+    texto: n.texto,
+    pessoa_id: n.quem ? idsPorNome[n.quem] : '',
+    card_id: n.card === undefined ? '' : 'card-' + String(n.card + 1).padStart(2, '0'),
+    data: dia(n.d),
+    arquivada: n.arquivada === true,
+    criado_em: instante(n.d),
+    atualizado_em: instante(n.d),
+    origem_id: '',
+  }));
+
+  return escrever(projeto, projeto.NOTAS_TAB_NAME, projeto.COLUNAS_NOTAS, objetos);
 }
 
 function escrever(projeto, aba, colunas, objetos) {

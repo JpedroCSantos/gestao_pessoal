@@ -452,6 +452,7 @@ function verificarConfiguracao() {
     { nome: TAB_NAME, setup: 'setupKanban()' },
     { nome: PESSOAS_TAB_NAME, setup: 'setupPessoas()' },
     { nome: ANOTACOES_TAB_NAME, setup: 'setupAnotacoes()' },
+    { nome: NOTAS_TAB_NAME, setup: 'setupNotas()' },
     { nome: LOG_TAB_NAME, setup: 'setupLog()' }
   ].forEach(function (aba) {
     if (ss.getSheetByName(aba.nome)) {

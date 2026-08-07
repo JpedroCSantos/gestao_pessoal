@@ -30,6 +30,7 @@ test('os três setups criam três abas e não apagam nada', () => {
   ctx.setupKanban();
   ctx.setupPessoas();
   ctx.setupAnotacoes();
+  ctx.setupNotas();
   ctx.setupLog();
 
   const nomes = ctx._ss.getSheets().map((s) => s.getName());

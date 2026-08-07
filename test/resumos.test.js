@@ -36,6 +36,7 @@ function comResumos(arvore, nomes) {
   ctx.setupKanban();
   ctx.setupPessoas();
   ctx.setupAnotacoes();
+  ctx.setupNotas();
   ctx.setupLog();
   semearPessoas(ctx, nomes || Object.keys(arvore));
   return ctx;

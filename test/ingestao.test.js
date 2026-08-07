@@ -38,6 +38,7 @@ function montarIngestao(opcoes = {}) {
   ctx.setupKanban();
   ctx.setupPessoas();
   ctx.setupAnotacoes();
+  ctx.setupNotas();
   ctx.setupLog();
 
   return { ctx, inbox, processados, erros, painel, resumos };

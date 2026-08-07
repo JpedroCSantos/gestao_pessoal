@@ -67,10 +67,10 @@ PAINEL_FOLDER_ID         RESUMOS_FOLDER_ID
 **7. Provisione as abas.** No editor, rode uma vez cada:
 
 ```
-setupKanban()   setupPessoas()   setupAnotacoes()   setupLog()
+setupKanban()   setupPessoas()   setupAnotacoes()   setupNotas()   setupLog()
 ```
 
-A primeira execução pede autorização. Os quatro são **idempotentes** — rodar de novo
+A primeira execução pede autorização. Os cinco são **idempotentes** — rodar de novo
 converge no mesmo estado e não apaga nada.
 
 **8. Cadastre o time.** Na aba `Pessoas`, uma linha por pessoa. E **marque a caixa
@@ -91,7 +91,7 @@ handler antes de recriar, e não toca em trigger de outro handler.
 verificarConfiguracao()
 ```
 
-Percorre as cinco pastas (testando escrita nas três da ingestão), as quatro abas, o
+Percorre as cinco pastas (testando escrita nas três da ingestão), as cinco abas, o
 trigger e a contagem de pessoas ativas. O log diz exatamente o que falta.
 
 **11. Publique o Web App.** *Implantar → Nova implantação → App da Web*.
@@ -199,6 +199,15 @@ motivo. Se o arquivo sumiu do inbox e nada apareceu, procure por `ErroDuplicado`
 
 **A tela não reflete o que eu acabei de mudar no código.**
 Web App não republicado. Ver o aviso acima.
+
+**A aba Notas dá erro de "aba não encontrada".**
+`setupNotas()` nunca rodou. É a quinta aba, e entrou depois das outras quatro — quem
+instalou antes dela precisa rodar essa uma no editor. `verificarConfiguracao()` acusa.
+
+**O contador do Log não baixa mesmo depois de eu corrigir os arquivos.**
+Esperado até você marcar como visto: as linhas antigas continuam na aba `Log`, e é assim
+que a auditoria funciona. O botão **Marcar N como visto** na aba zera o contador do menu —
+as falhas continuam na lista, e uma falha nova levanta o número de novo.
 
 **`getLastRow()` está devolvendo 1000.**
 Comportamento esperado, não bug — a validação aplicada no corpo inteiro faz o Sheets

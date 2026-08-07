@@ -12,6 +12,7 @@
 const TAB_NAME = 'Kanban';                // aba de cards. A planilha se chama "Gestão"
 const PESSOAS_TAB_NAME = 'Pessoas';       // âncora das FKs
 const ANOTACOES_TAB_NAME = 'Anotações';   // feedback por pessoa
+const NOTAS_TAB_NAME = 'Notas';           // recado solto — NÃO é feedback. Ver o schema
 const LOG_TAB_NAME = 'Log';               // auditoria da ingestão
 
 /* --------------------------------------------------------------------------
@@ -113,6 +114,40 @@ const COLUNAS_ANOTACOES = [
   { campo: 'origem_id',           tipo: 'texto'     },
 ];
 
+/**
+ * Colunas da aba `Notas` — o recado solto.
+ *
+ * **NÃO é a aba Anotações, e a diferença é a razão de existirem duas.** `Anotações` é
+ * feedback: tem `tipo` (positivo/melhoria) e os quatro `valor_*`, porque é material de 1:1 e
+ * carrega juízo. `Notas` não tem nem um nem outro, porque não julga nada.
+ *
+ * O caso que separa as duas, nas palavras dele: *"colaborador Gustavo comentou que estava
+ * cansado"* — informação verdadeira, útil, e que **não é feedback**. Registrá-la como
+ * anotação a obrigaria a nascer positiva ou de melhoria, e a apareceria num compilado de
+ * 1:1 como se fosse avaliação. Seria uma classificação inventada sobre uma frase que ninguém
+ * classificou, que é exatamente o que o `tipo` sem default existe para evitar do outro lado.
+ *
+ * As duas FKs são **opcionais e independentes**: a nota pode não ter nenhuma ("lembrar de
+ * revisar o processo de deploy"), só pessoa, só card, ou as duas ("Pessoa X gostaria de
+ * participar da demanda A"). Nenhuma combinação é obrigatória.
+ */
+const COLUNAS_NOTAS = [
+  { campo: 'id',            tipo: 'texto'     },
+  { campo: 'texto',         tipo: 'texto'     },
+  { campo: 'pessoa_id',     tipo: 'texto'     },  // FK → Pessoas.id, opcional, escalar
+  { campo: 'card_id',       tipo: 'texto'     },  // FK → Kanban.id, opcional, escalar
+  { campo: 'data',          tipo: 'data'      },
+  // Nota lida e resolvida sai da lista sem sair da planilha. A alternativa — lista que só
+  // cresce — deixa de servir para reler em dois meses, e apagar perderia o registro.
+  { campo: 'arquivada',     tipo: 'booleano'  },
+  { campo: 'criado_em',     tipo: 'data_hora' },
+  { campo: 'atualizado_em', tipo: 'data_hora' },
+  // Sem uso hoje: nenhuma skill escreve nota ainda. Fica porque "Gustavo comentou que estava
+  // cansado" é exatamente uma frase de corredor, e o dia em que houver captura por voz a
+  // dedupe do inbox depende desta coluna.
+  { campo: 'origem_id',     tipo: 'texto'     },
+];
+
 /** Colunas da aba Log, na ordem do `02-camada-de-acesso`. */
 const COLUNAS_LOG = [
   { campo: 'quando',    tipo: 'data_hora' },
@@ -186,6 +221,18 @@ const LARGURAS_ANOTACOES = {
   origem_id: 250,
 };
 
+const LARGURAS_NOTAS = {
+  id: 250,
+  texto: 560,
+  pessoa_id: 250,
+  card_id: 250,
+  data: 110,
+  arquivada: 90,
+  criado_em: 160,
+  atualizado_em: 160,
+  origem_id: 250,
+};
+
 const LARGURAS_LOG = {
   quando: 160,
   arquivo: 260,
@@ -218,6 +265,11 @@ function setupPessoas() {
 /** Cria (ou reconfigura) a aba `Anotações`, o feedback por pessoa. */
 function setupAnotacoes() {
   return provisionarAba_(ANOTACOES_TAB_NAME, COLUNAS_ANOTACOES, LARGURAS_ANOTACOES);
+}
+
+/** Cria (ou reconfigura) a aba `Notas`, o recado solto — que não é feedback. */
+function setupNotas() {
+  return provisionarAba_(NOTAS_TAB_NAME, COLUNAS_NOTAS, LARGURAS_NOTAS);
 }
 
 /** Cria (ou reconfigura) a aba `Log`, onde o processarInbox registra cada arquivo lido. */
