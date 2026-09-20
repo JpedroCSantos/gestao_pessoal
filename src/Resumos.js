@@ -146,10 +146,18 @@ function lerResumo(id) {
    colaborador responde — onde concorda, onde discorda, com o que se compromete
    — não tinha onde ficar, e o momento de capturar é durante a conversa.
 
-   **Sempre no Doc de HOJE daquela pessoa, nunca no que está na tela.** A
-   `compilador-1a1` manda acrescentar ao Doc do dia quando ele existe e proíbe
-   mexer em data anterior (`05`). Comentar lendo um compilado de julho não pode
-   escrever em julho — então grava em hoje, dizendo qual compilação foi usada.
+   **No Doc que está aberto na tela — o compilado que conduziu a conversa.** O
+   comentário é resposta a um texto específico: separá-lo em outro arquivo
+   obrigaria a abrir dois Docs para entender um diálogo. Vale mesmo quando o
+   compilado é de outra data, e isso é uma exceção consciente à regra do `05`,
+   que proíbe a **skill** de mexer em Doc de data anterior. A regra existe para
+   que compilar não reescreva histórico; acrescentar o que foi dito na conversa
+   não reescreve nada.
+
+   O preço da exceção: **o nome do arquivo deixa de datar o conteúdo.** Um
+   comentário de agosto pode morar no Doc `2026-07-10`. Por isso o parágrafo
+   leva a data inteira, e não só a hora — sem ela, "quando ele disse isso?"
+   passaria a ser respondido pelo nome do arquivo, que estaria errado.
 
    Por que no Doc e não em aba nova: a `compilador-1a1` **já lê Docs**. A
    compilação do mês que vem enxerga o que ele disse neste mês sem nenhum
@@ -160,27 +168,37 @@ function lerResumo(id) {
 const TITULO_COMENTARIOS = '— comentários do 1:1 —';
 
 /**
- * Grava um comentário de 1:1 no Doc de hoje da pessoa, e carimba `data_ultimo_1a1`.
+ * Grava um comentário de 1:1 no Doc do compilado aberto, e carimba `data_ultimo_1a1`.
  *
  * O carimbo entra aqui, e **não** é o mesmo caso do compilador sob demanda — que é proibido
  * de carimbar porque compilar é preparação e pode rodar três vezes na semana. Comentário é o
  * **evento**: só existe se a conversa aconteceu. É também o que destrava a fila de 1:1 do
- * Hoje sem depender da rotina mensal rodar.
+ * Hoje sem depender da rotina mensal rodar. E carimba **hoje**, não a data do Doc: a
+ * conversa aconteceu agora, mesmo que o compilado que a conduziu seja de julho.
  *
  * @param {Object} payload
  * @param {string} payload.pessoa_id  De quem é o 1:1.
  * @param {string} payload.texto      O que ele anotou da conversa.
- * @param {string} [payload.resumo_id] O compilado que estava na tela, para a referência.
- * @return {{id: string, titulo: string, texto: string, url: string, criouDoc: boolean,
- *           data: string, pessoa: Object}}
+ * @param {string} payload.resumo_id  O compilado aberto na tela. **Obrigatório** — não há
+ *     destino padrão, porque cair em outro arquivo em silêncio é justamente o defeito que
+ *     este desenho corrige.
+ * @return {{id: string, titulo: string, texto: string, url: string, data: string,
+ *           pessoa: Object}}
  * @throws ErroValidacao, ErroNaoEncontrado, ErroLock.
  */
 function comentar1a1(payload) {
   const pessoaId = texto_(payload && payload.pessoa_id);
   const comentario = texto_(payload && payload.texto);
+  const resumoId = texto_(payload && payload.resumo_id);
 
   if (!pessoaId) throw erro_(ERRO_VALIDACAO, 'comentar1a1: "pessoa_id" é obrigatório.');
   if (!comentario) throw erro_(ERRO_VALIDACAO, 'comentar1a1: "texto" é obrigatório.');
+  if (!resumoId) {
+    throw erro_(
+      ERRO_VALIDACAO,
+      'comentar1a1: "resumo_id" é obrigatório — o comentário vai no compilado aberto.'
+    );
+  }
 
   // Ativa, e não só existente: comentário de 1:1 pressupõe alguém no time. Mesma regra do
   // createAnotacao, e por isso a mensagem de erro dele serve aqui.
@@ -190,16 +208,19 @@ function comentar1a1(payload) {
   const tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
   const hoje = Utilities.formatDate(new Date(), tz, ISO_DATA);
 
-  // Lock porque duas gravações concorrentes poderiam criar dois arquivos com o nome de hoje
-  // — e "um Doc por compilação" viraria dois.
+  exigirResumoDaPessoa_(resumoId, pessoa);
+
+  // Lock porque duas gravações concorrentes no mesmo Doc se sobrescreveriam: cada uma abre,
+  // acrescenta e salva, e a segunda a salvar apagaria o parágrafo da primeira.
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(20000)) {
     throw erro_(ERRO_LOCK, 'outra escrita está em andamento. Tente de novo em alguns segundos.');
   }
 
-  let escrito;
   try {
-    escrito = gravarComentarioNoDoc_(pessoa, comentario, payload && payload.resumo_id, hoje, tz);
+    const doc = DocumentApp.openById(resumoId);
+    escreverComentario_(doc, comentario, hoje, tz);
+    doc.saveAndClose();
   } finally {
     lock.releaseLock();
   }
@@ -218,98 +239,102 @@ function comentar1a1(payload) {
    */
   registrar1a1({ pessoa_id: pessoaId, data: hoje });
 
-  const file = DriveApp.getFileById(escrito.id);
+  const file = DriveApp.getFileById(resumoId);
   return {
-    id: escrito.id,
+    id: resumoId,
     titulo: file.getName(),
-    texto: DocumentApp.openById(escrito.id).getBody().getText(),
+    texto: DocumentApp.openById(resumoId).getBody().getText(),
     url: file.getUrl(),
-    criouDoc: escrito.criouDoc,
     data: hoje,
     pessoa: pessoa
   };
 }
 
-/** A parte que precisa do lock: achar ou criar o Doc do dia e acrescentar o parágrafo. */
-function gravarComentarioNoDoc_(pessoa, comentario, resumoId, hoje, tz) {
-  const pasta = pastaDaPessoa_(pessoa.nome);
-  const existente = docDoDia_(pasta, hoje);
-  const doc = existente || DocumentApp.create(hoje);
-  const criouDoc = !existente;
+/**
+ * O Doc está na pasta **desta** pessoa, sob a raiz de resumos?
+ *
+ * Duas checagens que parecem uma, e nenhuma é dispensável.
+ *
+ * Sem a primeira, `comentar1a1` seria um "acrescente texto a qualquer Doc que esta conta
+ * alcança" exposto ao cliente — ela é função sem `_`, chamável por `google.script.run` por
+ * qualquer usuário do Web App, exatamente como o `lerResumo`, que tem a mesma guarda.
+ *
+ * Sem a segunda, comentar no compilado de Bruno carimbaria o `data_ultimo_1a1` de Ana: o
+ * texto num arquivo, o evento em outra pessoa, e as duas metades erradas em silêncio.
+ */
+function exigirResumoDaPessoa_(resumoId, pessoa) {
+  const raiz = pastaDeResumos_().getId();
+  const alvo = chaveDeNome_(pessoa.nome);
 
-  if (criouDoc) {
-    // DocumentApp.create nasce na raiz do Drive; move para a pasta da pessoa.
-    DriveApp.getFileById(doc.getId()).moveTo(pasta);
+  let file = null;
+  try {
+    file = DriveApp.getFileById(resumoId);
+  } catch (err) {
+    file = null;
+  }
+  if (!file) {
+    throw erro_(ERRO_NAO_ENCONTRADO, 'o compilado "' + resumoId + '" não existe.');
   }
 
-  escreverComentario_(doc, comentario, resumoId, tz, criouDoc);
-  doc.saveAndClose();
+  const pais = file.getParents();
+  while (pais.hasNext()) {
+    const pai = pais.next();
+    if (chaveDeNome_(pai.getName()) !== alvo) continue;
 
-  return { id: doc.getId(), criouDoc: criouDoc };
+    const avos = pai.getParents();
+    while (avos.hasNext()) {
+      if (avos.next().getId() === raiz) return;
+    }
+  }
+
+  throw erro_(
+    ERRO_NAO_ENCONTRADO,
+    'o compilado "' + resumoId + '" não está na pasta de resumos de ' + pessoa.nome + '.'
+  );
 }
 
 /**
  * Acrescenta o comentário ao fim do corpo.
  *
- * Cada gravação vira um parágrafo com hora, sob um cabeçalho único por Doc. Uma conversa
- * produz vários pensamentos em momentos diferentes; sobrescrever perderia os anteriores, e um
- * cabeçalho por gravação encheria o Doc de títulos repetidos.
+ * Cada gravação vira um bloco sob um cabeçalho único por Doc. Uma conversa produz vários
+ * pensamentos em momentos diferentes; sobrescrever perderia os anteriores, e um cabeçalho por
+ * gravação encheria o Doc de títulos repetidos.
+ *
+ * **Data inteira, não só hora.** Aqui o parágrafo é a única fonte da data: o Doc se chama
+ * `2026-07-10` e pode receber um comentário de agosto. Com só `HH:mm`, reler daqui a três
+ * meses responderia "quando ele disse isso?" pelo nome do arquivo, e erraria por semanas.
+ *
+ * **Uma linha do textarea = um parágrafo no Doc, e isto é um conserto, não um refinamento.**
+ * `appendParagraph` recebe UM parágrafo: `\n` dentro do texto não vira quebra, é descartado
+ * pelo Docs. Uma anotação em tópicos entrava como blocão corrido, com o fim de uma linha
+ * colado no começo da seguinte — `"…Gabriel.- Incentivando…"`. Só o primeiro parágrafo leva o
+ * carimbo de data: é um evento, e repetir a hora em cada linha faria a lista parecer sete
+ * gravações.
+ *
+ * Linha em branco é descartada porque cada `appendParagraph` já é um parágrafo com espaçamento
+ * próprio — mantê-las produziria parágrafos vazios no Doc.
  */
-function escreverComentario_(doc, comentario, resumoId, tz, criouDoc) {
+function escreverComentario_(doc, comentario, hoje, tz) {
   const corpo = doc.getBody();
-
-  if (criouDoc) {
-    // Doc que nasce de um comentário não tem compilado nenhum. Dizer isso evita que alguém
-    // leia o arquivo daqui a um mês e procure o read que nunca existiu.
-    corpo.appendParagraph('Registro de 1:1 sem compilação prévia.')
-      .setHeading(DocumentApp.ParagraphHeading.NORMAL);
-  }
 
   if (!temTitulo_(corpo)) {
     corpo.appendParagraph('').setHeading(DocumentApp.ParagraphHeading.NORMAL);
     corpo.appendParagraph(TITULO_COMENTARIOS).setHeading(DocumentApp.ParagraphHeading.HEADING3);
-    if (resumoId) {
-      corpo.appendParagraph('Compilado usado na conversa: ' + resumoId)
-        .setHeading(DocumentApp.ParagraphHeading.NORMAL);
-    }
   }
 
   const hora = Utilities.formatDate(new Date(), tz, 'HH:mm');
-  corpo.appendParagraph(hora + ' — ' + comentario)
-    .setHeading(DocumentApp.ParagraphHeading.NORMAL);
+  const linhas = String(comentario).split(/\r?\n/)
+    .map(function (linha) { return linha.trim(); })
+    .filter(function (linha) { return linha; });
+
+  linhas.forEach(function (linha, i) {
+    corpo.appendParagraph(i === 0 ? hoje + ' ' + hora + ' — ' + linha : linha)
+      .setHeading(DocumentApp.ParagraphHeading.NORMAL);
+  });
 }
 
 function temTitulo_(corpo) {
   return String(corpo.getText()).indexOf(TITULO_COMENTARIOS) >= 0;
-}
-
-/** O Doc cujo nome é a data de hoje, ou null. */
-function docDoDia_(pasta, hoje) {
-  const arquivos = pasta.getFiles();
-  while (arquivos.hasNext()) {
-    const file = arquivos.next();
-    if (dataDoResumo_(file) === hoje) return DocumentApp.openById(file.getId());
-  }
-  return null;
-}
-
-/**
- * A subpasta da pessoa, criada se não existir.
- *
- * O nome é o da aba `Pessoas`, exatamente — é o único lugar do sistema em que nome é chave
- * (ver `chaveDeNome_`), porque a pasta é navegada por gente no Drive. Criar aqui é o que
- * permite comentar o 1:1 de quem ainda não tem compilado nenhum.
- */
-function pastaDaPessoa_(nome) {
-  const raiz = pastaDeResumos_();
-  const alvo = chaveDeNome_(nome);
-
-  const pastas = raiz.getFolders();
-  while (pastas.hasNext()) {
-    const pasta = pastas.next();
-    if (chaveDeNome_(pasta.getName()) === alvo) return pasta;
-  }
-  return raiz.createFolder(nome);
 }
 
 function pessoaPorId_(pessoaId) {

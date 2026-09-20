@@ -23,6 +23,12 @@
  * recusaria a escrita de qualquer forma. Desativar alguém é, portanto, motivo para regerar
  * este arquivo — igual a contratar.
  *
+ * As duas coisas se fazem na tela **Pessoas** do app (`createPessoa` / `updatePessoa`), e
+ * nenhuma delas regera este arquivo sozinha: ele é colado dentro de um zip que vive no
+ * claude.ai, fora do alcance do Apps Script. Por isso a camada **recusa dois ativos com o
+ * mesmo nome** — é esta tabela que a skill usa para resolver "a Ana" em um id, e duas Anas
+ * fariam a captura escolher em silêncio.
+ *
  * Rode à mão quando o time mudar, copie a saída do log e substitua o bloco na skill.
  *
  * @return {string} O markdown, também escrito no log.

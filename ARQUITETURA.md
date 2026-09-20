@@ -195,6 +195,31 @@ Quem esconde é cada tela, que sabe se está mostrando atenção ou histórico.
 > nasce inativo e some do app até as caixas serem marcadas. `verificarConfiguracao()`
 > reprova enquanto não houver ninguém ativo.
 
+### Quem escreve em `Pessoas`
+
+`createPessoa` e `updatePessoa`, pela tela **Pessoas**. Antes delas a aba só mudava por
+migração ou à mão, e digitar a linha tinha três armadilhas: `id` precisa ser UUID porque é
+o alvo de todas as FKs, `ativo` em branco lê como `false` e a pessoa nasce invisível, e
+`nivel` fora da lista passa se for colado.
+
+Quatro decisões que moram nessas duas funções:
+
+- **Quem entra no time entra ativo**, e o payload do cadastro não pode dizer o contrário.
+  Sair é um ato próprio, com o texto na tela dizendo o que muda. Uma caixinha "ativo" no
+  formulário de criação é exatamente como se cadastra sem querer alguém que não aparece.
+- **`notion_id` e `data_ultimo_1a1` são recusados nas duas.** O primeiro é o endereço do
+  rollback — vazio significa "nasceu aqui" ([DEPLOY.md](DEPLOY.md)) —, e o segundo é do
+  `registrar1a1`, que existe porque o conector do Drive lê a planilha e não escreve nela.
+  Editá-lo no formulário silenciaria a fila de 1:1 sem que a conversa tivesse acontecido.
+- **Dois ativos com o mesmo nome são recusados.** Nome não é chave em lugar nenhum do
+  schema, mas é chave na captura por voz: a skill resolve "a Ana" para um id pela tabela
+  que o `gerarReferenciaDePessoas()` imprime, e ela lista só os ativos. Duas Anas fariam a
+  anotação ir para a pessoa errada sem erro nenhum aparecer. Inativo não conta, porque não
+  entra na referência — o que torna o caso interessante **reativar** alguém cujo homônimo
+  entrou no meio tempo, e é ali que a recusa aparece.
+- **Não há delete.** Apagar a linha transformaria em uuid cru toda anotação e todo card que
+  apontam para ela. Sair do time é um estado, não um sumiço.
+
 ## 6. O front
 
 Cinco telas, navegação no cliente, sem parâmetro de URL — o `?view=` pertence às rotas de
@@ -204,6 +229,19 @@ painel, e reusar o nome colidiria dois namespaces na mesma query string.
 urgência, começando por uma frase que já conclui em vez de uma contagem que obriga o
 leitor a concluir. Card travado no cliente **sai da fila do dia** — a bola está do outro
 lado.
+
+A fila abre em **Em andamento**, e ele é o único bloco que **corta por status**; os três de
+baixo cortam por prazo. Duas consequências que são decisão, e não descuido:
+
+- **Ele pode repetir um card que aparece abaixo**, e isso é a exceção consciente à regra do
+  bloco de cliente (que existe para não dizer duas vezes a mesma coisa no mesmo eixo). Aqui
+  os eixos são outros: um card em andamento que vence hoje é verdadeiramente as duas coisas,
+  e escondê-lo de um dos lados faria aquele bloco mentir sobre o que responde. Não
+  "desduplicar" — a fila de prazo perderia cards, que é o pior dos dois erros.
+- **Ele é o único bloco recortado** (cinco, com alternador). Nos blocos de prazo a
+  quantidade *é* o recado — "sete vencidos" —, e esconder parte dela o apagaria justamente
+  quando ele é mais urgente. Em andamento é inventário e cresce sem teto. O cabeçalho diz
+  "5 de 12", nunca só "5".
 
 **Board** tem arrastar e soltar com atualização otimista. **Reverter é obrigatório:** se
 o servidor recusar, o card volta para a coluna de origem e o erro aparece. Otimismo sem

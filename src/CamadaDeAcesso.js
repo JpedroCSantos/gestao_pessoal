@@ -160,7 +160,10 @@ function createAnotacao(payload) {
 }
 
 /**
- * Miolo comum de createCard e createAnotacao: deduplica, gera id, carimba e grava.
+ * Miolo comum dos creates: deduplica, gera id, carimba e grava.
+ *
+ * `createPessoa` passa por aqui sem `origem_id` no objeto, e a dedupe se pula sozinha — a
+ * aba Pessoas não tem essa coluna, e não precisa: ela não é alimentada pelo inbox.
  *
  * **Precisa ser chamado com o lock já tomado.** A dedupe roda DENTRO do lock, nunca antes:
  * checar fora reabre exatamente a corrida que o lock existe para fechar — duas execuções
@@ -242,7 +245,8 @@ function exigirPessoaAtiva_(pessoaId) {
       ERRO_VALIDACAO,
       'pessoa_id "' + pessoaId + '" está inativo na aba ' + PESSOAS_TAB_NAME + '. ' +
       'Registro para quem saiu do time não apareceria em tela nenhuma. Se a pessoa voltou, ' +
-      'marque a caixa "ativo" na linha dela.'
+      'reative-a na tela Pessoas do app — é o updatePessoa, que carimba o atualizado_em ' +
+      'junto. Marcar a caixa à mão na aba também funciona, e não carimba.'
     );
   }
 }
@@ -517,6 +521,248 @@ function ultimaLinhaComId_(sheet) {
 function listPessoas() {
   return lerAba_(PESSOAS_TAB_NAME, 'setupPessoas', COLUNAS_PESSOAS)
     .sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
+}
+
+/* ==========================================================================
+   PESSOAS — escrita
+   --------------------------------------------------------------------------
+   Duas funções estreitas, e a estreiteza é o desenho. `createPessoa` cadastra
+   alguém; `updatePessoa` corrige nome e nível e liga e desliga o `ativo`.
+
+   Até aqui a aba `Pessoas` só mudava por migração ou à mão, e digitar a linha
+   direto tem três armadilhas que estas funções fecham de uma vez: `id` tem que
+   ser UUID porque é o alvo de todas as FKs, `ativo` em branco lê como `false` e
+   faz a pessoa nascer invisível, e `nivel` fora da lista passa se for colado.
+
+   DUAS COLUNAS FICAM DE FORA, e nenhuma por esquecimento:
+
+   `notion_id` — é o endereço do rollback. **Vazio significa "nasceu aqui"**, e é
+       o que faz o delta da migração se identificar sozinho, sem depender de data
+       nem de título (DEPLOY.md §4). Deixar o front escrevê-lo apagaria a única
+       coisa que distingue as duas origens.
+
+   `data_ultimo_1a1` — é do `registrar1a1`, que existe porque o conector do Drive
+       lê a planilha e não escreve nela. Uma segunda porta para a mesma coluna é
+       exatamente o começo do problema que o §2.1 descreve, e aqui seria pior: a
+       fila de 1:1 do Hoje lê essa data, e um valor digitado no formulário
+       silenciaria a fila sem que a conversa tivesse acontecido.
+   ========================================================================== */
+
+/** O que o cadastro aceita. `ativo` não entra: ver o `createPessoa`. */
+const CAMPOS_PESSOA_NO_CADASTRO = ['nome', 'nivel'];
+
+/** O que a edição aceita. É o cadastro mais o `ativo`, que é o motivo de ela existir. */
+const CAMPOS_PESSOA_EDITAVEIS = ['nome', 'nivel', 'ativo'];
+
+/**
+ * Cadastra alguém no time.
+ *
+ * **Nasce sempre `ativo`, e o payload não pode dizer o contrário.** Cadastrar alguém
+ * inativo é cadastrar uma linha que não aparece em tela nenhuma — e, pior, é o estado em
+ * que a pessoa cai por acidente quando a caixa fica desmarcada na digitação à mão. Quem
+ * desativa é o `updatePessoa`, que é uma decisão própria e não um default.
+ *
+ * **Não deduplica por `origem_id`** — `Pessoas` não tem essa coluna, e não precisa ter: a
+ * única porta de entrada é o front, porque `TIPOS_ACEITOS` da ingestão não inclui pessoa.
+ * Quem protege do duplo clique é a recusa de nome repetido, tomada dentro do mesmo lock.
+ *
+ * @param {Object} payload `nome` obrigatório; `nivel` opcional, validado contra NIVEL_OPCOES.
+ * @return {Object} A pessoa criada, com `id`, no formato de transporte.
+ * @throws ErroValidacao, ErroLock.
+ */
+function createPessoa(payload) {
+  if (!payload || typeof payload !== 'object') {
+    throw erro_(ERRO_VALIDACAO, 'createPessoa: payload ausente ou não é um objeto.');
+  }
+  validarChavesDePessoa_(payload, CAMPOS_PESSOA_NO_CADASTRO, 'createPessoa');
+
+  const nome = texto_(payload.nome);
+  if (!nome) throw erro_(ERRO_VALIDACAO, 'createPessoa: "nome" é obrigatório.');
+
+  const nivel = normalizarEntrada_(COLUNAS_PESSOAS, 'nivel', payload.nivel);
+
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) {
+    throw erro_(ERRO_LOCK, 'outra escrita está em andamento. Tente de novo em alguns segundos.');
+  }
+
+  try {
+    const sheet = abaPessoas_();
+
+    // DENTRO do lock, como a dedupe do inserirComDedupe_ e pelo mesmo motivo: checar fora
+    // deixa duas execuções passarem pela checagem e inserirem as duas.
+    exigirNomeLivre_(sheet, nome, '');
+
+    // `id`, `criado_em` e `atualizado_em` são preenchidos lá dentro. Sem `origem_id` no
+    // objeto, a dedupe é pulada sozinha — e é o mesmo caminho de escrita dos outros dois
+    // creates, incluindo o posicionamento que não usa getLastRow (§2.2).
+    return inserirComDedupe_(sheet, COLUNAS_PESSOAS, {
+      notion_id: '',          // nasceu aqui — ver o cabeçalho desta seção
+      nome: nome,
+      nivel: nivel,
+      data_ultimo_1a1: '',    // ninguém tem 1:1 antes de entrar
+      ativo: true,
+    }, 'pessoa');
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Corrige nome e nível, e liga ou desliga o `ativo`.
+ *
+ * **Desativar não apaga nem esconde nada**, e é o que faz esta função ser segura: o
+ * `listPessoas` continua devolvendo quem saiu, porque ele é a tabela de tradução id→nome do
+ * sistema inteiro. O que muda é que a camada passa a recusar anotação e carimbo de 1:1 para
+ * essa pessoa, e as telas de atenção param de oferecê-la. Card ainda delegado a ela continua
+ * aparecendo com o nome dela — que é justamente o card que precisa de outro dono. Ver `04`.
+ *
+ * Por isso também **não há delete**: remover a linha transformaria em uuid cru toda anotação
+ * e todo card que apontam para ela. Sair do time é um estado, não um sumiço.
+ *
+ * @param {string} id
+ * @param {Object} patch Só `nome`, `nivel` e `ativo`. Ausente preserva; presente aplica.
+ * @return {Object} A pessoa já atualizada.
+ * @throws ErroValidacao, ErroNaoEncontrado, ErroLock.
+ */
+function updatePessoa(id, patch) {
+  const alvo = texto_(id);
+  if (!alvo) throw erro_(ERRO_VALIDACAO, 'updatePessoa: "id" é obrigatório.');
+  if (!patch || typeof patch !== 'object') {
+    throw erro_(ERRO_VALIDACAO, 'updatePessoa: patch ausente ou não é um objeto.');
+  }
+  validarChavesDePessoa_(patch, CAMPOS_PESSOA_EDITAVEIS, 'updatePessoa');
+
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) {
+    throw erro_(ERRO_LOCK, 'outra escrita está em andamento. Tente de novo em alguns segundos.');
+  }
+
+  try {
+    const sheet = abaPessoas_();
+    const numeroDaLinha = linhaComValor_(sheet, colunaDe_(COLUNAS_PESSOAS, 'id'), alvo);
+    if (!numeroDaLinha) {
+      throw erro_(
+        ERRO_NAO_ENCONTRADO,
+        'nenhuma pessoa com id "' + alvo + '". Nada foi alterado — ' +
+        'update não cadastra ninguém silenciosamente.'
+      );
+    }
+
+    // Lê, muta e regrava a linha inteira: mesmo padrão do updateCard e do arquivarNota.
+    const linha = sheet.getRange(numeroDaLinha, 1, 1, COLUNAS_PESSOAS.length).getValues()[0];
+
+    CAMPOS_PESSOA_EDITAVEIS.forEach(function (campo) {
+      if (!(campo in patch)) return;   // ausente preserva; presente aplica, mesmo vazio
+      linha[colunaDe_(COLUNAS_PESSOAS, campo) - 1] =
+        normalizarEntrada_(COLUNAS_PESSOAS, campo, patch[campo]);
+    });
+
+    const nome = texto_(linha[colunaDe_(COLUNAS_PESSOAS, 'nome') - 1]);
+    if (!nome) throw erro_(ERRO_VALIDACAO, 'updatePessoa: "nome" não pode ficar vazio.');
+
+    // Só quando ela TERMINA ativa. Dois inativos homônimos são inofensivos — a referência
+    // das skills lista apenas ativos, e é lá que o nome ambíguo faz a captura errar.
+    // Conferir sempre impediria reativar alguém cujo homônimo entrou no meio tempo sem
+    // dizer o que fazer a respeito; conferindo aqui, a recusa vem no momento certo.
+    if (linha[colunaDe_(COLUNAS_PESSOAS, 'ativo') - 1] === true) {
+      exigirNomeLivre_(sheet, nome, alvo);
+    }
+
+    linha[colunaDe_(COLUNAS_PESSOAS, 'atualizado_em') - 1] = new Date();
+
+    sheet.getRange(numeroDaLinha, 1, 1, COLUNAS_PESSOAS.length).setValues([linha]);
+    SpreadsheetApp.flush();
+
+    return linhaParaObjeto_(
+      linha, COLUNAS_PESSOAS,
+      SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone()
+    );
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Rejeita chave fora da lista aceita por aquela operação.
+ *
+ * Não reusa o `validarChaves_` porque a regra é outra: lá o critério é "tudo do schema que
+ * a camada não gera", e aqui `notion_id` e `data_ultimo_1a1` passariam — são editáveis pelo
+ * schema e proibidos por decisão. A lista explícita é o que torna a decisão legível.
+ */
+function validarChavesDePessoa_(obj, aceitos, contexto) {
+  Object.keys(obj).forEach(function (chave) {
+    if (aceitos.indexOf(chave) >= 0) return;
+
+    if (chave === 'notion_id') {
+      throw erro_(
+        ERRO_VALIDACAO,
+        contexto + ': "notion_id" não é editável. Vazio significa "nasceu aqui", e é como o ' +
+        'rollback da migração identifica o que precisa voltar.'
+      );
+    }
+    if (chave === 'data_ultimo_1a1') {
+      throw erro_(
+        ERRO_VALIDACAO,
+        contexto + ': "data_ultimo_1a1" é carimbada pelo registrar1a1, quando a conversa ' +
+        'acontece. Editá-la aqui silenciaria a fila de 1:1 sem que ela tivesse acontecido.'
+      );
+    }
+    if (CAMPOS_GERADOS.indexOf(chave) >= 0) {
+      throw erro_(
+        ERRO_VALIDACAO,
+        contexto + ': "' + chave + '" é gerado pela camada e não pode ser enviado.'
+      );
+    }
+    if (chave === 'ativo') {
+      throw erro_(
+        ERRO_VALIDACAO,
+        contexto + ': quem entra no time entra ativo. Para desativar alguém, use o ' +
+        'updatePessoa — é uma decisão, não um default de formulário.'
+      );
+    }
+    throw erro_(
+      ERRO_VALIDACAO,
+      contexto + ': campo desconhecido "' + chave + '". Aceitos: ' + aceitos.join(', ') + '.'
+    );
+  });
+}
+
+/**
+ * Recusa nome que já está em uso por OUTRA pessoa ativa.
+ *
+ * Nome não é chave em lugar nenhum do schema — as FKs são todas por id. Mas ele **é** chave
+ * na captura por voz: a skill ouve "a Ana mandou bem no deploy" e resolve "Ana" para um id
+ * pela tabela que o `gerarReferenciaDePessoas()` imprime, e essa tabela lista só os ativos.
+ * Duas Anas ativas fazem a captura escolher uma em silêncio, e a anotação vai para a pessoa
+ * errada sem erro nenhum aparecer. É o tipo de falha que só se descobre num 1:1.
+ *
+ * Inativo não conta, por isso mesmo: ele não entra na referência.
+ *
+ * @param {string} idQuePodeRepetir O id da própria pessoa, num update. '' na criação.
+ */
+function exigirNomeLivre_(sheet, nome, idQuePodeRepetir) {
+  const colId = colunaDe_(COLUNAS_PESSOAS, 'id');
+  const ultima = ultimaLinhaPreenchida_(sheet, colId);
+  if (ultima < 2) return;
+
+  const linhas = sheet.getRange(2, 1, ultima - 1, COLUNAS_PESSOAS.length).getValues();
+  const procurado = nome.toLowerCase();
+
+  for (let i = 0; i < linhas.length; i++) {
+    if (linhas[i][colunaDe_(COLUNAS_PESSOAS, 'ativo') - 1] !== true) continue;
+    if (texto_(linhas[i][colId - 1]) === idQuePodeRepetir) continue;
+    if (texto_(linhas[i][colunaDe_(COLUNAS_PESSOAS, 'nome') - 1]).toLowerCase() !== procurado) {
+      continue;
+    }
+
+    throw erro_(
+      ERRO_VALIDACAO,
+      'já existe alguém ativo chamado "' + nome + '". As skills resolvem nome → id pela ' +
+      'lista de ativos, e dois iguais fariam a captura por voz escolher em silêncio. ' +
+      'Use o sobrenome para distinguir, ou desative quem já saiu.'
+    );
+  }
 }
 
 /**
@@ -865,6 +1111,10 @@ function abaKanban_() {
 
 function abaAnotacoes_() {
   return abaPorNome_(ANOTACOES_TAB_NAME, 'setupAnotacoes');
+}
+
+function abaPessoas_() {
+  return abaPorNome_(PESSOAS_TAB_NAME, 'setupPessoas');
 }
 
 function abaPorNome_(nome, funcaoDeSetup) {

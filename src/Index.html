@@ -294,12 +294,29 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .bloco.b-vencido .bloco-cab { color: var(--bad); }
 .bloco.b-hoje .bloco-cab { color: var(--primary-dark); }
 .bloco.b-amanha .bloco-cab { color: var(--muted); }
+/* O bloco de andamento veste a cor do STATUS, e não uma quarta cor de urgência: ele é o
+   único que não se define por prazo, e a aresta é o que diz isso antes de o título ser
+   lido. É o mesmo token do chip `st-in-progress` das linhas lá dentro. */
+.bloco.b-andamento .bloco-cab { color: var(--s-in-progress); }
 .bloco .painel { border-left: 3px solid currentColor; }
 .bloco.b-vencido .painel { border-left-color: var(--bad); }
 .bloco.b-hoje .painel { border-left-color: var(--primary); }
 .bloco.b-amanha .painel { border-left-color: var(--border-forte); }
+.bloco.b-andamento .painel { border-left-color: var(--s-in-progress); }
 
 .linhas { display: flex; flex-direction: column; }
+/* O "mostrar mais" é a ÚLTIMA LINHA do painel, não um botão solto embaixo dele: o que ele
+   revela são linhas daquela lista, e sair da caixa faria parecer que abre outra coisa.
+
+   Sem borda própria: estando dentro de `.linhas`, ele deixa de ser o `:last-child` das
+   linhas, e a `border-bottom` da última já é o traço que o separa. Uma `border-top` aqui
+   somaria com aquela e desenharia 2px só nesse ponto do painel. */
+.bloco-mais {
+  display: block; width: 100%; text-align: left; padding: 10px 14px;
+  background: none; border: 0;
+  color: var(--muted); font-size: 13px; cursor: pointer; transition: background .1s;
+}
+.bloco-mais:hover { background: var(--bg); color: var(--text); }
 .linha {
   display: flex; align-items: center; gap: 9px; padding: 10px 14px;
   border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s;
@@ -646,23 +663,61 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .chip:hover { border-color: var(--border-forte); color: var(--text); }
 .chip.ativo { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-dark); }
 
-.notas { display: flex; flex-direction: column; gap: 9px; }
-.nota {
+/* ====================== ANOTAÇÕES — a lista ==============================
+ * Três faixas fixas, no espírito da fila do Hoje: à esquerda **quem e que sinal
+ * é**, no meio **o que foi observado e a evidência**, à direita **quando e sob
+ * quais valores**. O ganho é varrer trinta anotações na vertical sem reler a
+ * estrutura de cada uma — cada informação sempre na mesma coluna.
+ *
+ * O prefixo `anot-` é obrigatório, e é conserto de um bug real: estas regras se
+ * chamavam `.nota*`, e a aba Notas — recado solto, outra entidade — trouxe um
+ * segundo `.nota` e um segundo `.nota-texto`. A definição de baixo vencia, e o
+ * cartão de anotação passava a ser a grade de DUAS colunas da outra tela: o
+ * texto do feedback caía na coluna da direita, a da esquerda colapsava para
+ * zero, o nome ficava por cima do texto e a evidência saía uma letra por linha.
+ * `Anotações` e `Notas` agora têm prefixos distintos porque são entidades
+ * distintas.
+ *
+ * `grid-template-areas` e não posicionamento automático: com célula nomeada,
+ * cada filho declara onde mora, e a armadilha que causou o bug — item com
+ * `grid-row` definido é colocado ANTES dos automáticos e rouba a coluna errada
+ * — deixa de ser possível. A reflow estreita também vira uma linha só.
+ * ======================================================================== */
+.anots { display: flex; flex-direction: column; gap: 9px; }
+.anot {
+  display: grid;
+  /* 168px na faixa da direita é medida, não estética: é o que faz DOIS chips de valor
+     caberem lado a lado. Com 140px, "Colaboração" e "Transparência" empilhavam um por
+     linha e esticavam o cartão ao dobro da altura do seu conteúdo. Dois é o teto real —
+     a skill grava um valor por padrão. */
+  grid-template-columns: 118px minmax(0, 1fr) 168px;
+  grid-template-areas:
+    "quem nota data"
+    "tipo evid valores";
+  gap: 5px 16px; align-items: start;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 12px 15px; box-shadow: var(--shadow);
 }
-.nota-cab { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
-.nota-pessoa { font-weight: 600; font-size: 13px; }
-.nota-data { font-size: 11.5px; color: var(--sutil); margin-left: auto; font-variant-numeric: tabular-nums; }
+.anot-quem { grid-area: quem; font-weight: 600; font-size: 13px; word-break: break-word; }
+.anot-tipo { grid-area: tipo; }
 .t-positivo { background: var(--p-baixa-bg); color: var(--p-baixa); }
 .t-melhoria { background: var(--p-media-bg); color: var(--p-media); }
-.nota-texto { word-break: break-word; }
-.nota-contexto {
-  margin-top: 6px; font-size: 12.5px; color: var(--muted);
+/* A observação é o juízo, e é o que se lê primeiro: fica no tamanho do corpo. */
+.anot-nota { grid-area: nota; word-break: break-word; }
+/* A evidência é o caso concreto que sustenta o juízo — subordinada a ele, e a barra
+   à esquerda é o que diz isso sem precisar de rótulo. */
+.anot-evid {
+  grid-area: evid; font-size: 12.5px; color: var(--muted);
   border-left: 2px solid var(--border); padding-left: 9px; word-break: break-word;
 }
-.valores { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
-.valor {
+.anot-data {
+  grid-area: data; font-size: 11.5px; color: var(--sutil);
+  text-align: right; font-variant-numeric: tabular-nums;
+}
+.anot-valores {
+  grid-area: valores; display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-end;
+}
+.anot-valor {
   font-size: 10.5px; font-weight: 600; padding: 1.5px 7px; border-radius: 5px;
   background: var(--primary-soft); color: var(--primary-dark);
 }
@@ -892,13 +947,62 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .nota-lig.pessoa.inativa { background: transparent; color: var(--muted); border-style: dashed; }
 .nota-lig.pessoa em { font-style: normal; font-size: 10px; color: var(--sutil); }
 .nota-lig.card { background: var(--s-in-progress-bg); color: var(--s-in-progress); border-color: var(--s-in-progress-bg); }
+/*
+ * `grid-column: 2` é obrigatório, e não redundante com a ordem do HTML.
+ *
+ * Item travado em linha (`grid-row`) é posicionado pelo Grid ANTES dos automáticos. Sem a
+ * coluna explícita, o botão era colocado primeiro e pegava a coluna 1 — a de `1fr` —,
+ * empurrando o texto para a `auto`. Daí os dois sintomas do mesmo bug: nota curta deixava o
+ * botão largo do lado errado, e nota longa fazia a `auto` comer todo o espaço, a `1fr`
+ * colapsar para zero e o botão desaparecer por baixo do texto.
+ *
+ * `start` e não `center`: numa nota de dez linhas, centralizado o botão flutua no meio do
+ * parágrafo. Alinhado ao topo ele fica na altura da primeira linha, que é onde o olho está.
+ */
 .nota-acao {
-  grid-row: 1 / span 2; align-self: center; flex: none;
+  grid-column: 2; grid-row: 1 / span 2; align-self: start;
   border: 1px solid var(--border); background: transparent; color: var(--muted);
   font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 20px;
   cursor: pointer; white-space: nowrap; transition: all .12s;
 }
 .nota-acao:hover { background: var(--bg); color: var(--text); border-color: var(--border-forte); }
+
+/* ============================= PESSOAS =================================== */
+/* Reusa `.painel` + `.linhas` + `.linha` da fila do Hoje: é a mesma forma — uma lista de
+   registros clicáveis num cartão —, e um segundo desenho para a mesma coisa sairia de
+   sincronia no primeiro ajuste de altura de linha. Só o que é próprio de Pessoas mora aqui. */
+.pess { gap: 10px; cursor: default; }
+.pess:hover { background: none; }        /* a linha inteira não é clicável; os botões são */
+.pess .txt { flex: 0 1 auto; font-weight: 550; }
+
+.pess-nivel {
+  font-size: 11px; font-weight: 600; letter-spacing: .02em;
+  background: var(--bg); color: var(--muted); border-radius: 20px; padding: 2px 8px;
+}
+/* Empurra o resto para a direita: o que vem depois é contexto e ação, não identidade. */
+.pess-1a1 { margin-left: auto; font-size: 12px; color: var(--sutil); white-space: nowrap; }
+.pess-alerta {
+  font-size: 11.5px; color: var(--warn); font-weight: 600; white-space: nowrap;
+}
+
+/* Inativo em cinza e sem tachado: tachado diz "cancelado", e a pessoa não foi cancelada —
+   ela saiu, e o nome dela continua sendo o que traduz o histórico. */
+.pess.inativa .txt { color: var(--sutil); font-weight: 500; }
+
+.pess-btn {
+  border: 1px solid var(--border); background: transparent; color: var(--muted);
+  font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 20px;
+  cursor: pointer; white-space: nowrap; transition: all .12s;
+}
+.pess-btn:hover { background: var(--bg); color: var(--text); border-color: var(--border-forte); }
+
+/* Numa tela estreita a linha vira duas: nome em cima, contexto e botões embaixo. Sem isto
+   o `white-space: nowrap` do 1:1 e dos botões estoura a largura e cria rolagem lateral. */
+@media (max-width: 620px) {
+  .pess { flex-wrap: wrap; }
+  .pess .txt { flex: 1 0 100%; }
+  .pess-1a1 { margin-left: 0; }
+}
 
 /* ====================== DOCA DE COMENTÁRIOS DO 1:1 ======================= */
 .doca {
@@ -912,8 +1016,16 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .doca-aviso { font-size: 11.5px; color: var(--sutil); }
 .doca.sem-dono .doca-aviso { color: var(--warn); }
 .doca-corpo { display: flex; align-items: flex-end; gap: 9px; }
+/*
+ * Cresce com o texto, até 40vh. O teto é aqui e não no JS de propósito: a doca é `sticky` no
+ * rodapé da leitura, então cada pixel que ela ganha é um pixel que cobre o compilado que você
+ * está usando para conduzir a conversa. Passado o teto, a rolagem interna assume.
+ *
+ * `align-items: flex-end` no pai é o que mantém o Gravar rente à base enquanto a caixa sobe.
+ */
 .doca-corpo textarea {
-  flex: 1; min-width: 0; resize: vertical; min-height: 46px;
+  flex: 1; min-width: 0; resize: vertical; min-height: 46px; max-height: 40vh;
+  overflow-y: auto; line-height: 1.45;
   padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
   background: var(--surface); color: var(--text); outline: none; font-size: 13.5px;
   transition: border-color .12s;
@@ -972,6 +1084,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
   /* A agenda desce para baixo da fila: em tela estreita a coluna comeria a fila, e a ordem
      de leitura continua sendo trabalho primeiro. */
   .hoje-duas { grid-template-columns: 1fr; }
+  /* A anotação empilha na ordem de leitura, e é UMA linha porque as células têm nome.
+     Com posicionamento automático isto seria seis regras de `grid-column`/`grid-row`. */
+  .anot {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "quem" "tipo" "nota" "evid" "data" "valores";
+  }
+  .anot-data { text-align: left; }
+  .anot-valores { justify-content: flex-start; }
 }
 
 /* Não há media query intermediária: o `minmax(300px, 420px)` da grade já encolhe a agenda
@@ -1003,6 +1123,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
         <span class="menu-ico">&#9633;</span><span>Notas</span><span id="sinoNotas"></span></button>
       <button class="menu-item" id="menu-resumos" onclick="irPara('resumos')">
         <span class="menu-ico">&#9993;</span><span>Resumos</span></button>
+      <!-- Cadastro, e por isso fica no fim: é a única tela que não se abre todo dia. Mas
+           precisa existir, porque `ativo` é o campo que decide quem aparece em TODAS as
+           outras — e até aqui ele só podia ser marcado à mão na planilha. -->
+      <button class="menu-item" id="menu-pessoas" onclick="irPara('pessoas')">
+        <span class="menu-ico">&#9787;</span><span>Pessoas</span></button>
       <!-- O contador é o ponto do Log: a aba resolve investigação, mas quem não desconfia
            não abre. O número no menu é o que faz desconfiar. -->
       <button class="menu-item" id="menu-log" onclick="irPara('log')">
@@ -1046,6 +1171,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
             <span class="novo-ico">&#9998;</span>Anotação<em>feedback de alguém</em></button>
           <button role="menuitem" onclick="escolherNovo('nota')">
             <span class="novo-ico">&#9633;</span>Nota<em>recado solto, sem juízo</em></button>
+          <button role="menuitem" onclick="escolherNovo('pessoa')">
+            <span class="novo-ico">&#9787;</span>Pessoa<em>alguém novo no time</em></button>
         </div>
       </div>
     </header>
@@ -1073,7 +1200,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
        Doca inferior e não modal: você lê o compilado em cima e escreve embaixo, sem cobrir
        o texto que está usando para conduzir a conversa. Ela é a metade que faltava — o
        compilado diz o que VOCÊ deve dizer, e o que o colaborador responde não tinha onde
-       ficar. Grava sempre no Doc de HOJE, nunca no que está na tela se for de outra data. -->
+       ficar. Grava no Doc que está aberto — o comentário é resposta a ESTE texto. -->
   <div class="doca" id="doca">
     <div class="doca-cab">
       <span class="doca-titulo">Comentários da conversa</span>
@@ -1082,8 +1209,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
       <span class="doca-aviso" id="docaAviso"></span>
     </div>
     <div class="doca-corpo">
-      <textarea id="docaTexto" rows="2" placeholder="o que ele respondeu, com o que se comprometeu…"
-                oninput="pintarDoca()"></textarea>
+      <!-- `onmouseup` só existe para detectar arraste da alça; ver `conferirArrasteDaDoca`. -->
+      <textarea id="docaTexto" rows="2" placeholder="o que ele respondeu, com o que se comprometeu…&#10;uma linha por ponto — cada uma vira um parágrafo no Doc"
+                oninput="pintarDoca()" onmouseup="conferirArrasteDaDoca()"></textarea>
       <button class="btn btn-primario" id="btnComentar" onclick="salvarComentario()"
               disabled>Gravar</button>
     </div>
@@ -1284,6 +1412,47 @@ button, input, select, textarea { font: inherit; color: inherit; }
   </div>
 </div>
 
+<!-- ========================= PESSOA =========================
+     Cadastro e correção. Dois campos só, e é o desenho: `notion_id` é o endereço do
+     rollback da migração e `data_ultimo_1a1` é carimbada quando a conversa acontece —
+     a camada recusa os dois, então oferecê-los aqui seria um formulário que erra.
+
+     `ativo` também não está aqui. Ele não é um campo do cadastro: quem entra no time
+     entra ativo, e sair é um ato próprio, feito na lista com o texto dizendo o que
+     acontece. Uma caixinha "ativo" no formulário de criação é exatamente como alguém
+     cadastra sem querer uma pessoa que não aparece em tela nenhuma. -->
+<div class="overlay" id="overlayPessoa" onclick="cliqueForaFechaPessoa(event)">
+  <div class="modal estreito">
+    <div class="modal-cab">
+      <h2 id="tituloModalPessoa">Nova pessoa</h2>
+      <button class="fechar" onclick="fecharModalPessoa()" title="Fechar">&times;</button>
+    </div>
+
+    <form id="formPessoa" onsubmit="salvarPessoa(event)">
+      <div class="modal-corpo">
+        <div id="erroPessoa"></div>
+
+        <div class="campo">
+          <label for="p-nome">Nome *</label>
+          <input type="text" id="p-nome" required autocomplete="off"
+                 placeholder="como você se refere a ela em voz alta">
+        </div>
+
+        <div class="campo">
+          <label for="p-nivel">Nível</label>
+          <select id="p-nivel"></select>
+        </div>
+      </div>
+
+      <div class="modal-pe">
+        <span class="carimbos" id="carimbosPessoa"></span>
+        <button type="button" class="btn" onclick="fecharModalPessoa()">Cancelar</button>
+        <button type="submit" class="btn btn-primario" id="btnSalvarPessoa">Cadastrar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- ============ SELETOR DE DELEGADO, ao soltar em "Delegado" ============ -->
 <div class="overlay" id="overlayDelegar" onclick="cliqueForaCancela(event)">
   <div class="modal estreito">
@@ -1309,6 +1478,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
    constante que alimenta o dropdown da aba. Uma lista só, um lugar só. */
 var STATUS_COLUNAS = <?!= JSON.stringify(STATUS_OPCOES) ?>;
 var PRIORIDADES = <?!= JSON.stringify(PRIORIDADE_OPCOES) ?>;
+/* Mesma razão das duas acima: a lista fechada de `nivel` mora no schema de Pessoas, e o
+   formulário de cadastro tem que oferecer exatamente o que a camada aceita. */
+var NIVEIS = <?!= JSON.stringify(NIVEL_OPCOES) ?>;
 var STATUS_PADRAO_UI = <?!= JSON.stringify(STATUS_PADRAO) ?>;
 /* O teto de linhas do Log vem do servidor pelo mesmo motivo das listas acima: quem corta é
    o `listLog`, e a tela precisa dizer o número certo ao declarar o que ficou de fora. */
@@ -1321,6 +1493,7 @@ var VAO_MINIMO_UI = <?!= JSON.stringify(VAO_MINIMO) ?>;
 var SEM_STATUS = 'Sem status';
 var STATUS_DELEGADO = 'Delegado';
 var STATUS_DONE = 'Done';
+var STATUS_EM_ANDAMENTO = 'In progress';
 
 var CLASSE_STATUS = {
   'Not started': 'not-started', 'In progress': 'in-progress',
@@ -1341,11 +1514,16 @@ var VALORES = [
 
 var TITULOS = {
   hoje: 'Hoje', board: 'Board', dashboard: 'Dashboard',
-  anotacoes: 'Anotações', notas: 'Notas', resumos: 'Resumos', log: 'Log'
+  anotacoes: 'Anotações', notas: 'Notas', resumos: 'Resumos', pessoas: 'Pessoas', log: 'Log'
 };
 
 var DIAS_RECORTE_DONE = 30;
 var DIAS_CONFERIR_DELEGADO = 7;
+
+/* Quantos cards em andamento a fila mostra antes de recolher o resto. Cinco é o que cabe
+   acima dos blocos de prazo sem empurrá-los para fora da primeira tela — e a tela existe
+   para responder "por onde começo", que um inventário de quinze itens não responde. */
+var MAX_EM_ANDAMENTO = 5;
 var DIAS_CICLO_1A1 = 21;   // e não mês-calendário, para não quebrar na virada do mês
 var MS_DIA = 86400000;
 
@@ -1380,6 +1558,10 @@ var ignoradas = 0;
 var pessoas = [];
 var pessoasAtivas = [];
 var pessoasPorId = {};
+/* Lista vazia de verdade e lista que ainda não chegou desenham a mesma tela em Pessoas, e
+   a primeira convida a cadastrar alguém que já existe. Esta flag é o que as separa. */
+var pessoasCarregadas = false;
+var erroPessoas = '';
 
 var anotacoes = null;          // null = ainda não carregou
 var erroAnotacoes = '';
@@ -1421,9 +1603,15 @@ var termoBusca = '';
 var doneColapsada = true;      // decisão do `04`: histórico não abre sozinho
 var doneRecente = true;        // e, quando abre, abre recortada
 
+/* Mesma razão do recorte do Gantt morar no módulo: `desenhar()` refaz o HTML inteiro a
+   cada carga e a cada sincronização, e um estado guardado dentro do `htmlHoje` voltaria
+   a `false` sozinho — o bloco recolheria na cara de quem acabou de expandi-lo. */
+var emAndamentoExpandido = false;
+
 var filtroPessoa = '', filtroTipo = '', filtroValor = '';
 
 var idEmEdicao = null;         // null = criando; com id = editando aquele card
+var pessoaEmEdicao = null;     // idem, no modal de pessoa
 var arrastando = null;
 var delegacaoPendente = null;
 
@@ -1475,6 +1663,7 @@ function escolherNovo(qual) {
   fecharNovo();
   if (qual === 'card') return abrirModal();
   if (qual === 'anotacao') return abrirModalAnotacao();
+  if (qual === 'pessoa') return abrirModalPessoa();
   return abrirModalRecado();
 }
 
@@ -1538,6 +1727,7 @@ function desenhar() {
   else if (visao === 'dashboard') { alvo.innerHTML = htmlDashboard(); ligarGantt(); }
   else if (visao === 'resumos') alvo.innerHTML = htmlResumos();
   else if (visao === 'notas') alvo.innerHTML = htmlNotas();
+  else if (visao === 'pessoas') alvo.innerHTML = htmlPessoas();
   else if (visao === 'log') alvo.innerHTML = htmlLog();
   else alvo.innerHTML = htmlAnotacoes();
 
@@ -1550,6 +1740,7 @@ function atualizarSub() {
   if (visao === 'board') sub = cards.length + (cards.length === 1 ? ' card' : ' cards');
   else if (visao === 'dashboard') sub = ativos().length + ' ativos';
   else if (visao === 'anotacoes' && anotacoes) sub = anotacoes.length + ' anotações';
+  else if (visao === 'pessoas') sub = pessoasAtivas.length + ' no time';
   else if (visao === 'log' && log) sub = 'últimos ' + log.dias + ' dias';
   document.getElementById('subVisao').textContent = sub;
 }
@@ -1728,6 +1919,23 @@ function executaveis() {
   return ativos().filter(function (c) { return c.aguardando_cliente !== true; });
 }
 
+/**
+ * O que já está na mão: status `In progress`.
+ *
+ * Sai de `executaveis()`, e não de `ativos()`, para valer a mesma exclusão dos blocos de
+ * prazo — card em andamento e travado no cliente continua aparecendo uma vez só, no bloco
+ * de cliente. Sem isso o "In progress" viraria a exceção à regra do `04`, e justamente no
+ * bloco que abre a tela.
+ *
+ * **Este é o único bloco da fila que pode repetir um card**, e é de propósito: ele corta
+ * por status, e os três de baixo cortam por prazo. Um card em andamento que vence hoje é
+ * verdadeiramente as duas coisas, e omiti-lo aqui faria o bloco mentir sobre o que está
+ * aberto — que é a pergunta que ele responde.
+ */
+function emAndamento() {
+  return executaveis().filter(function (c) { return c.status === STATUS_EM_ANDAMENTO; });
+}
+
 /* Vencido nunca inclui Done: card concluído com prazo passado não é atraso, é história. */
 function vencidos() {
   var hoje = hojeIso();
@@ -1768,6 +1976,7 @@ function htmlHoje() {
   var hoje = hojeIso();
   var d = new Date();
 
+  var listaAndamento = emAndamento();
   var listaVencidos = vencidos();
   var listaHoje = vencemEm(hoje);
   var listaAmanha = vencemEm(isoMaisDias(1));
@@ -1783,6 +1992,15 @@ function htmlHoje() {
         '<div class="dia">' + d.getDate() + ' de ' + MESES[d.getMonth()] + ' de ' + d.getFullYear() + '</div>' +
         veredito(listaVencidos, listaHoje, listaAmanha) +
       '</div>' +
+
+      /* Abre a fila porque é o que já foi começado: antes de escolher o que puxar, a
+         pergunta é o que ficou aberto. Recortado em cinco para não empurrar o Vencido
+         para fora da primeira tela — o resto abre a pedido, e o cabeçalho diz quantos. */
+      bloco('Em andamento', 'b-andamento', listaAndamento, 'Nada em andamento.', {
+        limite: MAX_EM_ANDAMENTO,
+        expandido: emAndamentoExpandido,
+        alternar: 'alternarEmAndamento()'
+      }) +
 
       bloco('Vencido', 'b-vencido', listaVencidos, 'Nada vencido.') +
       bloco('Vence hoje', 'b-hoje', listaHoje, 'Nada vencendo hoje.') +
@@ -2082,7 +2300,16 @@ function veredito(vencidos, hoje, amanha) {
       : 'Nenhum card ativo tem prazo.') + '</div>';
 }
 
-function bloco(titulo, classe, lista, vazio) {
+/**
+ * Um bloco da fila do dia.
+ *
+ * @param {Object} [corte]  `{limite, expandido, alternar}` — recorta a lista em `limite`
+ *     itens com um alternador na última linha. **Opcional, e os blocos de prazo não usam**:
+ *     ali a quantidade É o recado ("sete vencidos"), e esconder parte dela apagaria o
+ *     recado justamente quando ele é mais urgente. Quem recorta é o bloco de status, que
+ *     é inventário e cresce sem teto.
+ */
+function bloco(titulo, classe, lista, vazio, corte) {
   /* Prazo é o eixo — ele define em qual bloco o card cai. Dentro do bloco: prioridade,
      status, e o prazo como último desempate.
      O status entra porque, empatados em urgência, o que já está na mão é o que ele
@@ -2090,16 +2317,37 @@ function bloco(titulo, classe, lista, vazio) {
      o critério final para o vencido de treze dias não ficar atrás do de ontem. */
   var ordenada = lista.slice().sort(porFilaDoDia);
 
+  /* A condição do alternador é `excede`, e não "tem oculto": expandido, `ocultos` é zero,
+     e um botão que some ao ser clicado deixaria a lista aberta sem como fechar. Pelo mesmo
+     motivo ele sai sozinho quando a lista encolhe abaixo do limite — não sobra um
+     "Recolher" que não recolhe nada, mesmo com o estado ainda em `true`. */
+  var excede = !!corte && ordenada.length > corte.limite;
+  var mostrados = (excede && !corte.expandido) ? ordenada.slice(0, corte.limite) : ordenada;
+  var ocultos = ordenada.length - mostrados.length;
+
+  var alternador = excede
+    ? '<button type="button" class="bloco-mais" onclick="' + corte.alternar + '">' +
+        (corte.expandido ? 'Recolher' : 'Mostrar mais ' + ocultos) +
+      '</button>'
+    : '';
+
   var corpo = ordenada.length
-    ? '<div class="painel"><div class="linhas">' + ordenada.map(htmlLinha).join('') + '</div></div>'
+    ? '<div class="painel"><div class="linhas">' + mostrados.map(htmlLinha).join('') +
+        alternador + '</div></div>'
     : '<p class="vazio-msg">' + esc(vazio) + '</p>';
+
+  /* O que sai da vista é declarado, como na coluna Done do board: o cabeçalho diz
+     "5 de 12", nunca só "5". Ver `04`. */
+  var contagem = ocultos ? mostrados.length + ' de ' + ordenada.length : ordenada.length;
 
   return '<div class="bloco ' + classe + '">' +
     '<p class="bloco-cab">' + esc(titulo) +
-      (ordenada.length ? '<span class="n">' + ordenada.length + '</span>' : '') +
+      (ordenada.length ? '<span class="n">' + contagem + '</span>' : '') +
     '</p>' + corpo +
   '</div>';
 }
+
+function alternarEmAndamento() { emAndamentoExpandido = !emAndamentoExpandido; desenhar(); }
 
 /* --------------------------------------------------------------------------
    CRITÉRIOS DE ORDENAÇÃO
@@ -3482,26 +3730,34 @@ function htmlListaNotas() {
   var lista = notasFiltradas();
   if (!lista.length) return '<p class="vazio-msg">Nenhuma anotação com esses filtros.</p>';
 
-  return '<div class="notas">' + lista.map(function (a) {
+  /*
+   * Três faixas, sempre nas mesmas colunas — ver `.anot` no CSS para o porquê da grade
+   * nomeada. A ordem no HTML é a ordem de leitura em tela estreita, onde as faixas
+   * empilham: quem · tipo · observação · evidência · data · valores.
+   */
+  return '<div class="anots">' + lista.map(function (a) {
     var pessoa = pessoasPorId[a.pessoa_id];
     var rotulos = VALORES
       .filter(function (v) { return a[v.campo] === true; })
-      .map(function (v) { return '<span class="valor">' + v.rotulo + '</span>'; })
+      .map(function (v) { return '<span class="anot-valor">' + v.rotulo + '</span>'; })
       .join('');
 
     /* Id que não resolve aparece como está, em vez de sumir: dado órfão visível é
        problema; dado órfão escondido é problema que ninguém acha. */
     var nome = pessoa ? pessoa.nome : a.pessoa_id;
 
-    return '<article class="nota">' +
-        '<div class="nota-cab">' +
-          '<span class="nota-pessoa">' + esc(nome) + '</span>' +
-          '<span class="pill t-' + esc(a.tipo || 'positivo') + '">' + esc(a.tipo || '—') + '</span>' +
-          '<span class="nota-data">' + (a.data ? fmtData(a.data) : 'sem data') + '</span>' +
-        '</div>' +
-        '<div class="nota-texto">' + esc(a.nota) + '</div>' +
-        (a.contexto ? '<div class="nota-contexto">' + esc(a.contexto) + '</div>' : '') +
-        (rotulos ? '<div class="valores">' + rotulos + '</div>' : '') +
+    /* Tipo ausente vira "—" com a cor de positivo, e não um cartão sem a faixa: a coluna
+       existe para ser varrida, e um buraco nela quebra a varredura. */
+    var tipo = a.tipo || '';
+
+    return '<article class="anot">' +
+        '<div class="anot-quem">' + esc(nome) + '</div>' +
+        '<div class="anot-tipo"><span class="pill t-' + esc(tipo || 'positivo') + '">' +
+          esc(tipo || '—') + '</span></div>' +
+        '<div class="anot-nota">' + esc(a.nota) + '</div>' +
+        (a.contexto ? '<div class="anot-evid">' + esc(a.contexto) + '</div>' : '') +
+        '<div class="anot-data">' + (a.data ? fmtData(a.data) : 'sem data') + '</div>' +
+        (rotulos ? '<div class="anot-valores">' + rotulos + '</div>' : '') +
       '</article>';
   }).join('') + '</div>';
 }
@@ -3557,11 +3813,19 @@ function htmlLinhaResumo(p) {
       fmtData(ultimo.data) + '</span>'
     : '<span class="silencio nunca">nunca compilado</span>';
 
-  /* O carimbo em Pessoas e a data do Doc deveriam bater. Quando não batem, alguma das
-     duas coisas não rodou — e isso só aparece se a tela mostrar as duas. */
-  var divergente = ultimo && p.data_ultimo_1a1 && p.data_ultimo_1a1 !== ultimo.data
-    ? '<span class="dias-fora" title="A data carimbada em Pessoas é ' +
-      esc(fmtData(p.data_ultimo_1a1)) + '">carimbo diverge</span>'
+  /*
+   * O carimbo em Pessoas mais ANTIGO que o último compilado significa que compilou e a
+   * conversa não aconteceu — e isso só aparece se a tela mostrar as duas datas.
+   *
+   * Só essa direção. Carimbo mais NOVO que o último Doc era impossível quando comentar criava
+   * o Doc do dia; agora que o comentário vai no compilado aberto, é o resultado normal de
+   * conduzir um 1:1 a partir de um compilado de julho. Comparar com `!==` faria o caso comum
+   * levantar alarme — e selo que acende no caminho normal para de ser lido.
+   */
+  var divergente = ultimo && p.data_ultimo_1a1 && p.data_ultimo_1a1 < ultimo.data
+    ? '<span class="dias-fora" title="Compilado em ' + esc(fmtData(ultimo.data)) +
+      ', mas o último 1:1 carimbado é ' + esc(fmtData(p.data_ultimo_1a1)) +
+      '">compilado sem conversa</span>'
     : '';
 
   var acao = ultimo
@@ -3642,6 +3906,7 @@ function fecharResumo() {
   resumoQuem = '';
   resumoPessoaId = '';
   document.getElementById('docaTexto').value = '';
+  soltarAlturaDaDoca();
   document.getElementById('erroDoca').innerHTML = '';
   document.getElementById('leitura').classList.remove('aberto');
   desenhar();
@@ -3650,21 +3915,63 @@ function fecharResumo() {
 /* ==========================================================================
    COMENTÁRIOS DO 1:1
 
-   Grava no Doc de HOJE daquela pessoa — nunca no que está na tela, se ele for de
-   outra data. A `compilador-1a1` proíbe mexer em Doc de data anterior (`05`), e
-   comentar lendo um compilado de julho não pode reescrever julho.
+   Grava no Doc ABERTO, o compilado que conduziu a conversa — inclusive quando ele
+   é de outra data. O comentário é resposta a este texto; guardá-lo em outro
+   arquivo obrigaria a abrir dois Docs para entender um diálogo.
 
-   E carimba `data_ultimo_1a1`: comentário é o EVENTO do 1:1, diferente de
-   compilar, que é preparação e pode rodar três vezes na semana.
+   E carimba `data_ultimo_1a1` com HOJE, não com a data do Doc: comentário é o
+   EVENTO do 1:1, diferente de compilar, que é preparação e pode rodar três vezes
+   na semana. Ler o compilado de julho hoje é uma conversa de hoje.
    ========================================================================== */
 
+/* `resumoAberto` também trava o botão: sem ele não há destino, e o back-end recusa. Enquanto
+   o Doc carrega, a doca já está na tela — é essa janela que o guard fecha. */
 function pintarDoca() {
   var texto = document.getElementById('docaTexto').value.trim();
-  document.getElementById('btnComentar').disabled = !texto || !resumoPessoaId;
+  document.getElementById('btnComentar').disabled =
+    !texto || !resumoPessoaId || !resumoAberto;
+  ajustarAlturaDaDoca();
 }
 
-/* Diz ONDE vai cair antes de você digitar. Sem isso, comentar lendo um compilado antigo
-   pareceria estar escrevendo naquele arquivo. */
+/* ---------------------- a altura da caixa de comentário -------------------
+   Comentário de 1:1 sai em linhas — um ponto por linha —, e uma caixa de duas
+   linhas obriga a escrever às cegas dentro de uma janelinha que rola.
+   -------------------------------------------------------------------------- */
+
+/* Quanto a alça foi arrastada vence o automático: ver `conferirArrasteDaDoca`. */
+var docaAlturaManual = false;
+var docaAlturaAuto = 0;
+
+function ajustarAlturaDaDoca() {
+  if (docaAlturaManual) return;
+  var t = document.getElementById('docaTexto');
+
+  /* Zera antes de medir: com uma altura inline em pé, `scrollHeight` nunca diminui, e a caixa
+     só saberia crescer. O `+ 2` é a borda — `box-sizing: border-box` conta o padding no
+     `scrollHeight`, mas não a borda, e sem isso sobra uma barra de rolagem de 2px. */
+  t.style.height = 'auto';
+  t.style.height = (t.scrollHeight + 2) + 'px';
+  docaAlturaAuto = t.offsetHeight;
+}
+
+/* Se você arrastou a alça, a sua altura vence — continuar crescendo por cima seria o app
+   desfazendo o que você acabou de fazer. Compara com a última altura que o automático mediu,
+   e não com um valor qualquer, justamente para não confundir o próprio ajuste com arraste. */
+function conferirArrasteDaDoca() {
+  var t = document.getElementById('docaTexto');
+  if (docaAlturaAuto && Math.abs(t.offsetHeight - docaAlturaAuto) > 2) docaAlturaManual = true;
+}
+
+/* Volta ao automático quando o campo esvazia — gravou ou fechou. */
+function soltarAlturaDaDoca() {
+  docaAlturaManual = false;
+  docaAlturaAuto = 0;
+  document.getElementById('docaTexto').style.height = '';
+}
+
+/* Diz ONDE vai cair antes de você digitar — e agora precisa dizer também que a data do
+   parágrafo é hoje, porque o arquivo pode ser de julho e o nome dele deixou de datar o
+   conteúdo. */
 function pintarAvisoDaDoca() {
   var doca = document.getElementById('doca');
   var obs = document.getElementById('docaObs');
@@ -3680,15 +3987,15 @@ function pintarAvisoDaDoca() {
   doca.classList.remove('sem-dono');
   obs.textContent = resumoQuem;
 
-  var doDia = dataDoTitulo(resumoAberto ? resumoAberto.titulo : '') === hojeIso();
-  aviso.textContent = doDia
-    ? 'Vai no compilado de hoje.'
-    : 'Vai no registro de hoje — o compilado aberto não é alterado.';
+  var data = dataDoTitulo(resumoAberto ? resumoAberto.titulo : '');
+  aviso.textContent = (!data || data === hojeIso())
+    ? 'Vai neste compilado.'
+    : 'Vai neste compilado, de ' + fmtData(data) + ' — o parágrafo leva a data de hoje.';
 }
 
 function salvarComentario() {
   var texto = document.getElementById('docaTexto').value.trim();
-  if (!texto || !resumoPessoaId) return;
+  if (!texto || !resumoPessoaId || !resumoAberto) return;
 
   var btn = document.getElementById('btnComentar');
   btn.disabled = true;
@@ -3699,15 +4006,18 @@ function salvarComentario() {
     .withSuccessHandler(function (r) {
       btn.textContent = 'Gravar';
       document.getElementById('docaTexto').value = '';
+      soltarAlturaDaDoca();
       pintarDoca();
 
-      /* Mostra o Doc de hoje — que é onde o comentário caiu, e pode não ser o que estava
-         aberto. Trocar a tela é o que torna visível que a gravação foi para outro arquivo. */
+      /* Repinta o MESMO Doc com o texto que voltou — o comentário passa a estar no fim da
+         leitura, embaixo do compilado que o provocou. Sem rolar para lá de propósito: puxar a
+         tela no meio de uma conversa tira de vista justamente o trecho em discussão. */
       resumoAberto = { id: r.id, titulo: r.titulo, texto: r.texto, url: r.url };
       mostrarLeitura();
 
-      /* Pessoas mudou (`data_ultimo_1a1`) e a pasta de resumos também. Sem recarregar, a
-         fila de 1:1 do Hoje continuaria cobrando a conversa que acabou de acontecer. */
+      /* `data_ultimo_1a1` mudou, e as duas telas o leem: o Hoje (fila de 1:1) e a lista de
+         Resumos. Sem recarregar as duas, a fila continuaria cobrando a conversa que acabou
+         de acontecer. */
       carregarPessoas();
       carregarResumos();
     })
@@ -3719,10 +4029,12 @@ function salvarComentario() {
       document.getElementById('erroDoca').innerHTML =
         '<div class="erro-form">' + esc(mensagem(err)) + '</div>';
     })
+    /* `resumoAberto.id` direto, sem ternário: o guard no topo já garantiu que ele existe, e
+       mandar '' aqui só produziria um ErroValidacao que a tela pode evitar. */
     .comentar1a1({
       pessoa_id: resumoPessoaId,
       texto: texto,
-      resumo_id: resumoAberto ? resumoAberto.id : ''
+      resumo_id: resumoAberto.id
     });
 }
 
@@ -3855,6 +4167,206 @@ function alternarArquivoDaNota(id, arquivar) {
         '<div class="aviso">Não foi possível arquivar: ' + esc(mensagem(err)) + '</div>';
     })
     .arquivarNota(id, arquivar);
+}
+
+/* ==========================================================================
+   PESSOAS — o time
+   --------------------------------------------------------------------------
+   A tela que faltava. `ativo` é a coluna que decide quem aparece em todas as
+   outras, e até aqui ela só podia ser marcada à mão na planilha — junto com o
+   `id`, que precisa ser UUID porque é o alvo de todas as FKs.
+
+   Duas listas, e a separação é o conteúdo: em cima quem está no time, embaixo
+   quem saiu. Quem saiu **continua aqui**, e é a única tela que o mostra: as
+   outras escondem inativo porque falam de atenção, esta fala do cadastro.
+   ========================================================================== */
+
+function htmlPessoas() {
+  if (erroPessoas) {
+    return '<div class="faixa"><div class="erro"><b>Não foi possível carregar as pessoas.</b>' +
+      '<code>' + esc(erroPessoas) + '</code></div></div>';
+  }
+  if (!pessoasCarregadas) return '<p class="carregando">Carregando pessoas…</p>';
+
+  var inativos = pessoas.filter(function (p) { return !p.ativo; });
+
+  if (!pessoas.length) {
+    return '<div class="pagina"><p class="vazio-msg">Ninguém cadastrado ainda. ' +
+      'Use <b>Novo → Pessoa</b> — é o que destrava anotação, 1:1 e delegação, ' +
+      'que todos apontam para esta aba.</p></div>';
+  }
+
+  return '<div class="pagina">' +
+      '<div class="secao">' +
+        '<p class="secao-titulo">No time' +
+          '<span class="secao-num">' + pessoasAtivas.length + '</span></p>' +
+        (pessoasAtivas.length
+          ? '<div class="painel"><div class="linhas">' +
+              pessoasAtivas.map(htmlPessoa).join('') + '</div></div>'
+          : '<p class="vazio-msg">Ninguém ativo — o app inteiro fica vazio assim. ' +
+            'Reative alguém abaixo, ou cadastre.</p>') +
+      '</div>' +
+
+      /* O bloco de quem saiu só existe quando há quem tenha saído: uma seção "Fora do
+         time — 0" seria ruído permanente numa tela que já é a menos visitada. */
+      (inativos.length
+        ? '<div class="secao">' +
+            '<p class="secao-titulo">Fora do time' +
+              '<span class="secao-num">' + inativos.length + '</span></p>' +
+            '<p class="vazio-msg">Continuam aqui porque o nome deles ainda traduz as ' +
+              'anotações antigas e os cards que ficaram. Não escrevem nem entram em 1:1.</p>' +
+            '<div class="painel"><div class="linhas">' +
+              inativos.map(htmlPessoa).join('') + '</div></div>' +
+          '</div>'
+        : '') +
+    '</div>';
+}
+
+function htmlPessoa(p) {
+  var acao = p.ativo ? 'Desativar' : 'Reativar';
+
+  /* Card ainda delegado a quem está saindo é o caso que o `04` descreve: ele NÃO some da
+     tela junto com a pessoa, porque é exatamente o card que precisa de outro dono. Dizer
+     isso aqui, ao lado do botão, é o que transforma a desativação numa decisão informada
+     em vez de uma surpresa três dias depois. */
+  var pendentes = cardsDelegadosA(p.id).length;
+
+  var meta = '';
+  if (p.nivel) meta += '<span class="pess-nivel">' + esc(p.nivel) + '</span>';
+  if (p.ativo && pendentes) {
+    meta += '<span class="pess-alerta">' + pendentes +
+      (pendentes === 1 ? ' card delegado' : ' cards delegados') + '</span>';
+  }
+  meta += '<span class="pess-1a1">' + (p.data_ultimo_1a1
+    ? '1:1 em ' + fmtData(p.data_ultimo_1a1)
+    : 'sem 1:1 registrado') + '</span>';
+
+  return '<div class="linha pess' + (p.ativo ? '' : ' inativa') + '">' +
+      '<span class="txt">' + esc(p.nome) + '</span>' + meta +
+      '<button class="pess-btn" onclick="editarPessoa(\'' + esc(p.id) + '\')">Editar</button>' +
+      '<button class="pess-btn" onclick="alternarAtivo(\'' + esc(p.id) + '\')">' + acao + '</button>' +
+    '</div>';
+}
+
+/** Cards ativos delegados a esta pessoa. `delegado_para` é FK multivalor, separada por vírgula. */
+function cardsDelegadosA(pessoaId) {
+  return ativos().filter(function (c) {
+    return idsDeCsv(c.delegado_para).indexOf(pessoaId) >= 0;
+  });
+}
+
+/* ------------------------------- o modal ---------------------------------- */
+
+function abrirModalPessoa() {
+  pessoaEmEdicao = null;
+  prepararModalPessoa('Nova pessoa', 'Cadastrar', '');
+}
+
+function editarPessoa(id) {
+  var p = pessoasPorId[id];
+  if (!p) return;
+
+  pessoaEmEdicao = id;
+  prepararModalPessoa('Editar pessoa', 'Salvar',
+    'Cadastrada em ' + fmtDataHora(p.criado_em) + (p.ativo ? '' : ' · fora do time'));
+
+  document.getElementById('p-nome').value = p.nome || '';
+  document.getElementById('p-nivel').value = p.nivel || '';
+}
+
+function prepararModalPessoa(titulo, rotulo, carimbos) {
+  document.getElementById('erroPessoa').innerHTML = '';
+  document.getElementById('formPessoa').reset();
+  document.getElementById('tituloModalPessoa').textContent = titulo;
+  document.getElementById('carimbosPessoa').textContent = carimbos;
+
+  /* A lista fechada vem do schema pelo servidor, e o vazio é uma opção de verdade: nem
+     todo cadastro sabe o nível no dia, e a camada aceita vazio. */
+  document.getElementById('p-nivel').innerHTML =
+    '<option value="">— sem nível —</option>' + NIVEIS.map(function (n) {
+      return '<option value="' + esc(n) + '">' + esc(n) + '</option>';
+    }).join('');
+
+  botaoSalvarPessoa(false, rotulo);
+  document.getElementById('overlayPessoa').classList.add('aberto');
+  document.getElementById('p-nome').focus();
+}
+
+function fecharModalPessoa() {
+  document.getElementById('overlayPessoa').classList.remove('aberto');
+}
+
+function cliqueForaFechaPessoa(ev) {
+  if (ev.target.id === 'overlayPessoa') fecharModalPessoa();
+}
+
+function salvarPessoa(ev) {
+  ev.preventDefault();
+  var editando = !!pessoaEmEdicao;
+  var rotulo = editando ? 'Salvar' : 'Cadastrar';
+  botaoSalvarPessoa(true, rotulo);
+  document.getElementById('erroPessoa').innerHTML = '';
+
+  var campos = {
+    nome: document.getElementById('p-nome').value,
+    nivel: document.getElementById('p-nivel').value
+  };
+
+  var chamada = google.script.run
+    .withSuccessHandler(function () {
+      botaoSalvarPessoa(false, rotulo);
+      fecharModalPessoa();
+      carregarPessoas();   // ela redesenha a tela ao terminar
+    })
+    .withFailureHandler(function (err) {
+      botaoSalvarPessoa(false, rotulo);
+      document.getElementById('erroPessoa').innerHTML =
+        '<div class="erro-form">' + esc(mensagem(err)) + '</div>';
+    });
+
+  /* `ativo` NÃO vai no patch da edição: quem liga e desliga é o botão da lista, onde o
+     rótulo diz o que vai acontecer. Mandá-lo daqui faria o formulário reafirmar um estado
+     que ele não mostra, e uma edição de nível reativaria alguém sem querer. */
+  if (editando) chamada.updatePessoa(pessoaEmEdicao, campos);
+  else chamada.createPessoa(campos);
+}
+
+function botaoSalvarPessoa(ocupado, rotulo) {
+  var btn = document.getElementById('btnSalvarPessoa');
+  btn.disabled = ocupado;
+  btn.textContent = ocupado ? 'Salvando…' : rotulo;
+}
+
+/**
+ * Liga e desliga o `ativo`.
+ *
+ * Confirma antes de desativar, e **não** antes de reativar: desativar tira a pessoa das
+ * telas de atenção e faz a camada recusar anotação e 1:1 para ela, enquanto reativar só
+ * devolve o que havia. Confirmação nas duas pontas ensinaria a clicar em "ok" sem ler.
+ */
+function alternarAtivo(id) {
+  var p = pessoasPorId[id];
+  if (!p) return;
+
+  if (p.ativo) {
+    var pendentes = cardsDelegadosA(id).length;
+    var aviso = 'Desativar ' + p.nome + '?\n\n' +
+      'O nome continua traduzindo as anotações e os cards antigos. ' +
+      'O que muda: sai das telas de atenção, e a camada passa a recusar anotação e 1:1.';
+    if (pendentes) {
+      aviso += '\n\nAtenção: ' + pendentes + (pendentes === 1 ? ' card segue delegado' : ' cards seguem delegados') +
+        ' a ela, e vão continuar aparecendo com o nome dela — é o que lembra de dar outro dono.';
+    }
+    if (!window.confirm(aviso)) return;
+  }
+
+  google.script.run
+    .withSuccessHandler(function () { carregarPessoas(); })
+    .withFailureHandler(function (err) {
+      document.getElementById('aviso').innerHTML =
+        '<div class="aviso">Não foi possível alterar: ' + esc(mensagem(err)) + '</div>';
+    })
+    .updatePessoa(id, { ativo: !p.ativo });
 }
 
 /* ==========================================================================
@@ -4143,14 +4655,21 @@ function carregarPessoas() {
       pessoasAtivas = pessoas.filter(function (p) { return p.ativo; });
       pessoasPorId = {};
       pessoas.forEach(function (p) { pessoasPorId[p.id] = p; });
+      pessoasCarregadas = true;
+      erroPessoas = '';
       montarSeletorDePessoas('');
       /* A tela traduz id→nome e calcula a fila de 1:1; se as pessoas chegaram depois
-         dos cards, redesenha. */
+         dos cards, redesenha. É também o que devolve a tela Pessoas atualizada depois de
+         um cadastro ou de uma (des)ativação — sem segunda chamada e sem estado paralelo. */
       desenhar();
     })
     .withFailureHandler(function (err) {
+      erroPessoas = mensagem(err);
       document.getElementById('f-delegado_para').innerHTML =
-        '<span class="vazio">Pessoas indisponível: ' + esc(mensagem(err)) + '</span>';
+        '<span class="vazio">Pessoas indisponível: ' + esc(erroPessoas) + '</span>';
+      /* Sem isto a tela Pessoas ficaria em "Carregando…" para sempre — o seletor do modal
+         de card avisa, mas ele não está à vista de quem abriu esta aba. */
+      if (visao === 'pessoas') desenhar();
     })
     .listPessoas();
 }
@@ -4258,7 +4777,8 @@ function cliqueForaFecha(ev) {
 
 document.addEventListener('keydown', function (ev) {
   if (ev.key === 'Escape') {
-    fecharModal(); fecharModalAnotacao(); cancelarDelegacao(); fecharResumo();
+    fecharModal(); fecharModalAnotacao(); fecharModalPessoa();
+    cancelarDelegacao(); fecharResumo();
     return;
   }
 

@@ -73,8 +73,18 @@ setupKanban()   setupPessoas()   setupAnotacoes()   setupNotas()   setupLog()
 A primeira execução pede autorização. Os cinco são **idempotentes** — rodar de novo
 converge no mesmo estado e não apaga nada.
 
-**8. Cadastre o time.** Na aba `Pessoas`, uma linha por pessoa. E **marque a caixa
-`ativo`**: booleano vazio lê como `false`, então quem não for marcado não aparece no app.
+**8. Cadastre o time.** Pela tela **Pessoas** do app (*Novo → Pessoa*), que gera o `id`,
+carimba as datas e já marca `ativo`. Isso depende do passo 11, então na primeira instalação
+a ordem prática é publicar o Web App antes de cadastrar.
+
+Dá para digitar direto na aba `Pessoas`, e o `verificarConfiguracao()` aceita as duas. Se
+for por ali, três coisas que o formulário faz por você: o `id` precisa ser um **UUID**
+(é o alvo de todas as FKs — copie o formato de uma linha existente, nunca invente
+`pessoa-08`), `nivel` só aceita os valores da lista, e **marque a caixa `ativo`** — booleano
+vazio lê como `false`, e quem não for marcado não aparece em tela nenhuma.
+
+Para tirar alguém do time depois, use **Desativar** na mesma tela. Não apague a linha: o
+nome dela é o que traduz as anotações e os cards antigos.
 
 **9. Instale o trigger.**
 

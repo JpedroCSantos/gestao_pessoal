@@ -175,9 +175,9 @@ function criarPasta(nome, mae) {
 /**
  * Índice global id→pasta.
  *
- * Existe porque pasta criada em runtime (o `createFolder` do `pastaDaPessoa_`) precisa ser
- * encontrável pelo `DriveApp.getFolderById` depois — o índice do `criarAmbiente` só conhece
- * as pastas passadas na montagem.
+ * Existe porque pasta criada depois da montagem — por `createFolder` em runtime, ou pelo
+ * `criarPasta` de um teste montando a árvore de `Resumos/<pessoa>/` — precisa ser encontrável
+ * pelo `DriveApp.getFolderById`, e o índice do `criarAmbiente` só conhece o `opcoes.pastas`.
  */
 const pastasPorIdGlobal = {};
 
@@ -241,8 +241,21 @@ function docFake(file) {
     getBody: () => ({
       getText: () => file._conteudo(),
       appendParagraph(texto) {
+        /*
+         * `\n` no argumento é DESCARTADO, como no Google.
+         *
+         * Um `appendParagraph` cria UM parágrafo, e parágrafo de Doc não contém quebra de
+         * linha: o Docs joga o `\n` fora. Guardá-lo aqui deixava o dublê aceitar um texto de
+         * várias linhas e devolvê-lo intacto — passava no teste e mentia em produção, que foi
+         * exatamente como um comentário em tópicos foi para o Doc como blocão corrido.
+         *
+         * A separação entre parágrafos continua sendo o `\n` que o dublê acrescenta AQUI,
+         * entre chamadas. Quem quer várias linhas chama várias vezes, que é o que o Google
+         * também exige.
+         */
+        const limpo = String(texto).replace(/\r?\n/g, '');
         const atual = file._conteudo();
-        file._escrever(atual ? atual + '\n' + texto : texto);
+        file._escrever(atual ? atual + '\n' + limpo : limpo);
         return { setHeading: () => ({ setHeading: () => null }) };
       },
     }),
@@ -367,8 +380,8 @@ function criarAmbiente(opcoes = {}) {
     },
     DriveApp: {
       getFolderById(id) {
-        // Cai no índice global depois do local: pasta criada em runtime (o `createFolder`
-        // do `pastaDaPessoa_`) não estava no `opcoes.pastas` da montagem.
+        // Cai no índice global depois do local: pasta criada depois da montagem não estava
+        // no `opcoes.pastas`.
         const pasta = pastasPorId[id] || pastasPorIdGlobal[id];
         if (!pasta) throw new Error(`pasta inexistente: ${id}`);
         return pasta;
