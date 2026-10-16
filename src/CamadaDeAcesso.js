@@ -159,6 +159,184 @@ function createAnotacao(payload) {
   }
 }
 
+/* --------------------------------------------------------------------------
+   EDITAR UMA ANOTAÇÃO
+
+   O `05` já dizia **"edição é exclusiva do front"** — o que ele proíbe é a skill
+   editar, porque captura assíncrona não desambigua qual registro você quis dizer.
+   Pelo front, onde você aponta a linha, a objeção não existe.
+
+   E o caso que a justifica é concreto: a skill resolve nome falado para `pessoa_id`,
+   e a lista de hoje tem três ambiguidades — "Luiz", "João" e, a pior, **"Vitor" e
+   "Victor", que são homófonos**. Quando ela erra, o feedback entra na pessoa errada e
+   vai aparecer no 1:1 dela. Sem edição, o conserto era desativar nada e reescrever à
+   mão na planilha, que é o caminho sem validação nenhuma.
+
+   DUAS COLUNAS SÃO RECUSADAS, e as duas por motivo de integridade, não de opinião:
+
+   `notion_id` — endereço do rollback, igual a Pessoas. Vazio significa "nasceu aqui".
+
+   `origem_id` — **a chave de deduplicação.** É ela que faz reprocessar o inbox ser
+       inofensivo *por construção*. Apagá-la faz o mesmo arquivo entrar de novo na
+       próxima varredura; trocá-la pela de outro arquivo faz aquele outro ser ignorado
+       para sempre, em silêncio. Nenhum dos dois estragos tem sintoma visível.
+   -------------------------------------------------------------------------- */
+
+/** Colunas de Anotações que o front recusa editar, cada uma por um motivo de integridade. */
+const CAMPOS_ANOTACAO_PROTEGIDOS = ['notion_id', 'origem_id'];
+
+/**
+ * O que o `updateAnotacao` aceita: tudo do schema menos os gerados e os dois protegidos.
+ *
+ * Derivada do schema, e não escrita à mão, pela mesma razão que o resto: um quinto
+ * `valor_*` acrescentado a `COLUNAS_ANOTACOES` passa a ser editável sozinho. Uma lista
+ * literal aqui sairia de sincronia no dia em que a EMPRESA ganhasse um valor novo, e o
+ * sintoma seria um campo que a tela mostra e a camada recusa.
+ *
+ * ⛔ **FUNÇÃO, e não `const` no nível do arquivo** — e isto é uma regressão real, não
+ * preciosismo. A primeira versão era
+ *
+ *     const CAMPOS_ANOTACAO_EDITAVEIS = COLUNAS_ANOTACOES.filter(…)
+ *
+ * e derrubou o projeto inteiro em produção com `ReferenceError: COLUNAS_ANOTACOES is not
+ * defined`. `COLUNAS_ANOTACOES` mora em `Código.js`, e **a ordem de avaliação no Apps
+ * Script é a do editor** (§1): lá `CamadaDeAcesso` vem antes de `Código`, então a linha
+ * rodava com a constante ainda inexistente. Um erro na avaliação derruba TUDO, inclusive
+ * as funções que não têm nada com isso.
+ *
+ * Dentro de uma função, o acesso acontece na chamada, quando todos os arquivos já foram
+ * avaliados — e aí a ordem deixa de importar. **Nenhuma referência a símbolo de outro
+ * arquivo pode acontecer no nível do arquivo.** Os schemas de `Código.js` referenciam as
+ * listas fechadas assim porque estão no MESMO arquivo, acima.
+ */
+function camposAnotacaoEditaveis_() {
+  return COLUNAS_ANOTACOES
+    .filter(function (c) { return CAMPOS_GERADOS.indexOf(c.campo) < 0; })
+    .filter(function (c) { return CAMPOS_ANOTACAO_PROTEGIDOS.indexOf(c.campo) < 0; })
+    .map(function (c) { return c.campo; });
+}
+
+/**
+ * Corrige uma anotação já gravada.
+ *
+ * **`pessoa_id` é editável, e é o motivo principal de esta função existir** — mover o
+ * feedback para quem ele era desde sempre é o conserto da captura que resolveu o nome
+ * errado. A pessoa de destino precisa estar **ativa**, mesma regra do `createAnotacao`:
+ * feedback empurrado para quem saiu do time não apareceria em tela nenhuma.
+ *
+ * **Mas a checagem só roda quando `pessoa_id` está no patch.** Corrigir uma vírgula numa
+ * anotação antiga, de alguém que saiu do time desde então, tem que continuar possível —
+ * revalidar a FK a cada edição trancaria o histórico inteiro de quem saiu, e o histórico é
+ * justamente o que se preserva ao desativar em vez de apagar (ver `04`).
+ *
+ * @param {string} id
+ * @param {Object} patch Ausente preserva; presente aplica, **inclusive vazio** — é assim
+ *     que se limpa a evidência ou a data. `nota` e `tipo` são as duas que não podem
+ *     esvaziar.
+ * @return {Object} A anotação já atualizada, no formato de transporte.
+ * @throws ErroValidacao, ErroNaoEncontrado, ErroLock.
+ */
+function updateAnotacao(id, patch) {
+  const alvo = texto_(id);
+  if (!alvo) throw erro_(ERRO_VALIDACAO, 'updateAnotacao: "id" é obrigatório.');
+  if (!patch || typeof patch !== 'object') {
+    throw erro_(ERRO_VALIDACAO, 'updateAnotacao: patch ausente ou não é um objeto.');
+  }
+  validarChavesDeAnotacao_(patch, 'updateAnotacao');
+
+  // Antes do lock: é leitura, e segurá-lo durante ela não protege nada. Mesma escolha do
+  // createAnotacao.
+  if ('pessoa_id' in patch) {
+    const destino = texto_(patch.pessoa_id);
+    if (!destino) {
+      throw erro_(ERRO_VALIDACAO, 'updateAnotacao: "pessoa_id" não pode ficar vazio.');
+    }
+    exigirPessoaAtiva_(destino);
+  }
+
+  // Read-modify-write precisa do lock ainda mais que o append: sem ele, duas edições
+  // simultâneas fazem a segunda sobrescrever a primeira com a linha que leu antes.
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) {
+    throw erro_(ERRO_LOCK, 'outra escrita está em andamento. Tente de novo em alguns segundos.');
+  }
+
+  try {
+    const sheet = abaAnotacoes_();
+    const numeroDaLinha = linhaComValor_(sheet, colunaDe_(COLUNAS_ANOTACOES, 'id'), alvo);
+    if (!numeroDaLinha) {
+      throw erro_(
+        ERRO_NAO_ENCONTRADO,
+        'nenhuma anotação com id "' + alvo + '". Nada foi alterado — ' +
+        'update não cria anotação silenciosamente.'
+      );
+    }
+
+    const linha = sheet.getRange(numeroDaLinha, 1, 1, COLUNAS_ANOTACOES.length).getValues()[0];
+
+    COLUNAS_ANOTACOES.forEach(function (c, i) {
+      if (!(c.campo in patch)) return;   // ausente preserva; presente aplica, mesmo vazio
+      linha[i] = normalizarEntrada_(COLUNAS_ANOTACOES, c.campo, patch[c.campo]);
+    });
+
+    if (!texto_(linha[colunaDe_(COLUNAS_ANOTACOES, 'nota') - 1])) {
+      throw erro_(ERRO_VALIDACAO, 'updateAnotacao: "nota" não pode ficar vazia.');
+    }
+    // Mesma razão da criação: positivo e melhoria são opostos, e uma anotação sem tipo
+    // aparece no compilado sem dizer se é elogio ou cobrança.
+    if (!texto_(linha[colunaDe_(COLUNAS_ANOTACOES, 'tipo') - 1])) {
+      throw erro_(
+        ERRO_VALIDACAO,
+        'updateAnotacao: "tipo" não pode ficar vazio. Aceitos: ' + TIPO_NOTA_OPCOES.join(' · ') + '.'
+      );
+    }
+
+    linha[colunaDe_(COLUNAS_ANOTACOES, 'atualizado_em') - 1] = new Date();
+
+    sheet.getRange(numeroDaLinha, 1, 1, COLUNAS_ANOTACOES.length).setValues([linha]);
+    SpreadsheetApp.flush();
+
+    const tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+    return linhaParaObjeto_(linha, COLUNAS_ANOTACOES, tz);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Rejeita chave gerada, protegida ou inexistente no schema, cada uma com o seu porquê. */
+function validarChavesDeAnotacao_(patch, contexto) {
+  const editaveis = camposAnotacaoEditaveis_();
+
+  Object.keys(patch).forEach(function (chave) {
+    if (editaveis.indexOf(chave) >= 0) return;
+
+    if (chave === 'origem_id') {
+      throw erro_(
+        ERRO_VALIDACAO,
+        contexto + ': "origem_id" não é editável. É a chave de deduplicação do inbox — ' +
+        'mexer nela faz o mesmo envelope entrar duas vezes, ou outro ser ignorado para sempre.'
+      );
+    }
+    if (chave === 'notion_id') {
+      throw erro_(
+        ERRO_VALIDACAO,
+        contexto + ': "notion_id" não é editável. Vazio significa "nasceu aqui", e é como o ' +
+        'rollback da migração identifica o que precisa voltar.'
+      );
+    }
+    if (CAMPOS_GERADOS.indexOf(chave) >= 0) {
+      throw erro_(
+        ERRO_VALIDACAO,
+        contexto + ': "' + chave + '" é gerado pela camada e não pode ser enviado.'
+      );
+    }
+    throw erro_(
+      ERRO_VALIDACAO,
+      contexto + ': campo desconhecido "' + chave + '". Aceitos: ' + editaveis.join(', ') + '.'
+    );
+  });
+}
+
 /**
  * Miolo comum dos creates: deduplica, gera id, carimba e grava.
  *

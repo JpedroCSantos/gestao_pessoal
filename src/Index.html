@@ -697,7 +697,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
   gap: 5px 16px; align-items: start;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 12px 15px; box-shadow: var(--shadow);
+  cursor: pointer; transition: border-color .12s, box-shadow .12s;
 }
+/* O cartão inteiro abre a edição. O realce é de borda e sombra, e não de fundo: a faixa da
+   direita já carrega os chips de valor, e trocar o fundo os faria flutuar sem contorno. */
+.anot:hover { border-color: var(--border-forte); box-shadow: var(--shadow-md); }
 .anot-quem { grid-area: quem; font-weight: 600; font-size: 13px; word-break: break-word; }
 .anot-tipo { grid-area: tipo; }
 .t-positivo { background: var(--p-baixa-bg); color: var(--p-baixa); }
@@ -1293,16 +1297,26 @@ button, input, select, textarea { font: inherit; color: inherit; }
   </div>
 </div>
 
-<!-- ==================== NOVA ANOTAÇÃO ====================
-     Só criação, sem edição: a camada não tem updateAnotacao, e o `05` diz que anotação é
-     registro de um momento — corrigir o passado é outra decisão, não um campo de formulário.
+<!-- ==================== ANOTAÇÃO — criar e editar ====================
+     Criação e edição no mesmo modal, como o de card.
+
+     Este modal já foi só de criação, com a justificativa de que o `05` tratava anotação
+     como registro de um momento. Releitura: o `05` diz **"edição é exclusiva do front"** —
+     o que ele proíbe é a SKILL editar, porque captura assíncrona não desambigua qual
+     registro você quis dizer. Pelo front, onde você aponta a linha, a objeção não se aplica.
+
+     E o caso concreto decidiu: a skill resolve nome falado para `pessoa_id`, e a lista real
+     tem homônimos ("Luiz", "João") e homófonos ("Vitor" / "João Victor"). Quando ela erra, o
+     feedback entra na pessoa errada e vai aparecer no 1:1 dela. O conserto anterior era
+     reescrever à mão na planilha — sem validação, sem carimbo, e com a FK na mão.
+
      Aqui `tipo` é um select para uma pessoa escolher, e não texto livre: a armadilha que
      fez três capturas morrerem com "ponto_forte" era de vocabulário de quem escreve JSON.
      Numa lista de duas opções ela não existe. -->
 <div class="overlay" id="overlayAnotacao" onclick="cliqueForaFechaAnotacao(event)">
   <div class="modal">
     <div class="modal-cab">
-      <h2>Nova anotação</h2>
+      <h2 id="tituloModalAnotacao">Nova anotação</h2>
       <button class="fechar" onclick="fecharModalAnotacao()" title="Fechar">&times;</button>
     </div>
 
@@ -1351,7 +1365,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
       </div>
 
       <div class="modal-pe">
-        <span class="carimbos">Vazia em data = hoje</span>
+        <span class="carimbos" id="carimbosAnotacao">Vazia em data = hoje</span>
         <button type="button" class="btn" onclick="fecharModalAnotacao()">Cancelar</button>
         <button type="submit" class="btn btn-primario" id="btnSalvarAnotacao">Criar anotação</button>
       </div>
@@ -1564,6 +1578,7 @@ var pessoasCarregadas = false;
 var erroPessoas = '';
 
 var anotacoes = null;          // null = ainda não carregou
+var anotacoesPorId = {};       // o modal de edição resolve o id do cartão clicado
 var erroAnotacoes = '';
 
 /* A agenda carrega numa chamada própria: o Calendar é um serviço a mais, e se ele demorar
@@ -1612,6 +1627,7 @@ var filtroPessoa = '', filtroTipo = '', filtroValor = '';
 
 var idEmEdicao = null;         // null = criando; com id = editando aquele card
 var pessoaEmEdicao = null;     // idem, no modal de pessoa
+var anotacaoEmEdicao = null;   // idem, no modal de anotação
 var arrastando = null;
 var delegacaoPendente = null;
 
@@ -1846,9 +1862,18 @@ function carregarAnotacoes() {
   document.getElementById('conteudo').innerHTML = '<p class="carregando">Carregando anotações…</p>';
 
   google.script.run
-    .withSuccessHandler(function (lista) { anotacoes = lista || []; erroAnotacoes = ''; desenhar(); })
-    .withFailureHandler(function (err) { anotacoes = []; erroAnotacoes = mensagem(err); desenhar(); })
+    .withSuccessHandler(function (lista) { guardarAnotacoes(lista); erroAnotacoes = ''; desenhar(); })
+    .withFailureHandler(function (err) { guardarAnotacoes([]); erroAnotacoes = mensagem(err); desenhar(); })
     .listAnotacoes();
+}
+
+/* Os dois carregamentos passam por aqui. O índice por id existe para o modal de edição
+   resolver o cartão clicado sem varrer a lista, e montá-lo nos dois lugares à mão é como
+   um deles ficaria para trás — foi o que o `cardsPorId` já ensinou. */
+function guardarAnotacoes(lista) {
+  anotacoes = lista || [];
+  anotacoesPorId = {};
+  anotacoes.forEach(function (a) { anotacoesPorId[a.id] = a; });
 }
 
 function carregarResumos() {
@@ -1885,7 +1910,7 @@ function carregarAgenda() {
 function carregarAnotacoesEmSilencio() {
   google.script.run
     .withSuccessHandler(function (lista) {
-      anotacoes = lista || [];
+      guardarAnotacoes(lista);
       if (visao === 'anotacoes') desenhar();
     })
     .withFailureHandler(function () { /* a aba avisa quando for aberta */ })
@@ -3750,7 +3775,11 @@ function htmlListaNotas() {
        existe para ser varrida, e um buraco nela quebra a varredura. */
     var tipo = a.tipo || '';
 
-    return '<article class="anot">' +
+    /* O cartão inteiro abre a edição, como a linha da fila do Hoje abre o card. Um botão
+       "editar" por cartão acrescentaria trinta botões a uma tela cuja função é ser varrida
+       na vertical — e a varredura é o que ela faz melhor. */
+    return '<article class="anot" data-id="' + esc(a.id) + '"' +
+        ' onclick="editarAnotacao(this.dataset.id)">' +
         '<div class="anot-quem">' + esc(nome) + '</div>' +
         '<div class="anot-tipo"><span class="pill t-' + esc(tipo || 'positivo') + '">' +
           esc(tipo || '—') + '</span></div>' +
@@ -4847,15 +4876,63 @@ function botaoSalvar(ocupado) {
    ========================================================================== */
 
 function abrirModalAnotacao() {
+  anotacaoEmEdicao = null;
+  prepararModalAnotacao('Nova anotação', 'Vazia em data = hoje', '');
+}
+
+/**
+ * Abre o mesmo modal preenchido com a anotação.
+ *
+ * O principal uso não é corrigir texto, é **mover de pessoa**: a skill resolve nome falado
+ * para id, e a lista tem homônimos e homófonos. Ver o comentário do modal.
+ */
+function editarAnotacao(id) {
+  var a = anotacoesPorId[id];
+  if (!a) return;
+
+  anotacaoEmEdicao = id;
+  prepararModalAnotacao('Editar anotação', 'Registrada em ' + fmtDataHora(a.criado_em),
+    a.pessoa_id);
+
+  document.getElementById('a-pessoa_id').value = a.pessoa_id || '';
+  document.getElementById('a-tipo').value = a.tipo || '';
+  document.getElementById('a-nota').value = a.nota || '';
+  document.getElementById('a-contexto').value = a.contexto || '';
+  document.getElementById('a-data').value = a.data || '';
+
+  marcarNo('#a-valores', VALORES
+    .filter(function (v) { return a[v.campo] === true; })
+    .map(function (v) { return v.campo; })
+    .join(','));
+}
+
+/**
+ * @param {string} jaNaAnotacao  `pessoa_id` que a anotação já tem. '' na criação.
+ */
+function prepararModalAnotacao(titulo, carimbos, jaNaAnotacao) {
   document.getElementById('erroAnotacao').innerHTML = '';
   document.getElementById('formAnotacao').reset();
+  document.getElementById('tituloModalAnotacao').textContent = titulo;
+  document.getElementById('carimbosAnotacao').textContent = carimbos;
 
-  /* Só ativos, e sem o "mais quem já está" do seletor de card: anotação nasce agora, e
-     registrar feedback de quem saiu do time é o que a camada recusa de propósito. */
+  /* Ativos, **mais quem a anotação já tem** — a mesma regra do seletor de delegado, e pelo
+     mesmo motivo: sem a exceção, editar a vírgula de uma anotação de quem saiu do time não
+     acharia a opção no select, o campo cairia para vazio, e salvar tentaria mover o
+     feedback para ninguém. A camada recusaria, mas o erro seria incompreensível.
+     Criar continua só com ativos: feedback novo para quem saiu é o que ela recusa de propósito. */
+  var lista = pessoasAtivas.slice();
+  if (jaNaAnotacao && !lista.some(function (p) { return p.id === jaNaAnotacao; })) {
+    var fora = pessoasPorId[jaNaAnotacao];
+    if (fora) lista = lista.concat([fora]);
+  }
+
   document.getElementById('a-pessoa_id').innerHTML =
-    '<option value="">—</option>' + pessoasAtivas.map(function (p) {
-      return '<option value="' + esc(p.id) + '">' + esc(p.nome) + '</option>';
-    }).join('');
+    '<option value="">—</option>' + lista
+      .sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); })
+      .map(function (p) {
+        return '<option value="' + esc(p.id) + '">' + esc(p.nome) +
+          (p.ativo ? '' : ' (fora do time)') + '</option>';
+      }).join('');
 
   /* Remontado a cada abertura, como o de delegado: reset() não desmarca checkbox que o
      JS criou. */
@@ -4882,10 +4959,16 @@ function salvarAnotacao(ev) {
   botaoSalvarAnotacao(true);
   document.getElementById('erroAnotacao').innerHTML = '';
 
-  google.script.run
+  var chamada = google.script.run
     .withSuccessHandler(aoSalvarAnotacao)
-    .withFailureHandler(aoFalharSalvarAnotacao)
-    .createAnotacao(montarPayloadDeAnotacao());
+    .withFailureHandler(aoFalharSalvarAnotacao);
+
+  /* O MESMO payload nos dois casos, e isso é de propósito: o formulário mostra os nove
+     campos, então mandar só o que mudou faria o que está na tela e o que vai no patch
+     divergirem. Com o objeto inteiro, o que você vê é o que fica — inclusive um campo
+     esvaziado, que a camada trata como "limpe", e não como "não mexi". */
+  if (anotacaoEmEdicao) chamada.updateAnotacao(anotacaoEmEdicao, montarPayloadDeAnotacao());
+  else chamada.createAnotacao(montarPayloadDeAnotacao());
 }
 
 /**
@@ -4931,7 +5014,9 @@ function aoFalharSalvarAnotacao(err) {
 function botaoSalvarAnotacao(ocupado) {
   var btn = document.getElementById('btnSalvarAnotacao');
   btn.disabled = ocupado;
-  btn.textContent = ocupado ? 'Salvando…' : 'Criar anotação';
+  /* O rótulo sai do estado, e não de um parâmetro: dois lugares guardando "estou editando"
+     sairiam de sincronia no dia em que entrasse um terceiro ponto de entrada no modal. */
+  btn.textContent = ocupado ? 'Salvando…' : (anotacaoEmEdicao ? 'Salvar' : 'Criar anotação');
 }
 
 /* ==========================================================================

@@ -21,8 +21,16 @@ const SRC = path.join(RAIZ, 'src');
  * Ordem em que os arquivos são avaliados.
  *
  * `Código.js` vem primeiro porque os schemas referenciam as listas fechadas no nível do
- * arquivo. No Apps Script a ordem é a do editor — se ela mudar lá e os testes continuarem
- * passando, é porque nada depende dela; se quebrar aqui, quebra lá também.
+ * arquivo. No Apps Script a ordem é a do editor.
+ *
+ * ⛔ **Esta lista é UMA ordem possível, não a garantida — e confiar nela já custou uma
+ * quebra em produção.** Um `const` de nível de arquivo em `CamadaDeAcesso.js` lia
+ * `COLUNAS_ANOTACOES` de `Código.js`; aqui passava, e no editor, onde `CamadaDeAcesso` vem
+ * antes, derrubava o projeto inteiro com `ReferenceError`.
+ *
+ * Quem cobre isso é `test/ordem-de-avaliacao.test.js`, que avalia `src/` em ordem
+ * alfabética, invertida e arquivo por arquivo. Não troque esta lista por uma ordenação
+ * "esperta" achando que resolve: o ponto é o projeto não depender de ordem nenhuma.
  */
 const ARQUIVOS = [
   'Código.js', 'CamadaDeAcesso.js', 'Agenda.js', 'Ingestao.js', 'Migracao.js',

@@ -25,16 +25,51 @@ isolamento. Uma `const` de um arquivo é visível em todos. A ordem de avaliaç�
 editor — `Código.js` precisa vir primeiro, porque os schemas referenciam as listas
 fechadas no nível do arquivo.
 
+> ### ⛔ Nada no nível do arquivo pode ler símbolo de OUTRO arquivo
+>
+> Dentro de uma função, tudo enxerga tudo: o acesso acontece na chamada, quando os arquivos
+> já foram avaliados. No nível do arquivo, não — ali a ordem do editor decide, e ela não é
+> a do `mock/emulador.js`.
+>
+> Isto já quebrou em produção. Um `const CAMPOS_ANOTACAO_EDITAVEIS = COLUNAS_ANOTACOES…`
+> em `CamadaDeAcesso.js` derrubou o projeto **inteiro** com `ReferenceError:
+> COLUNAS_ANOTACOES is not defined` — e erro na avaliação não derruba só a função culpada,
+> derruba tudo, inclusive o que não tem relação nenhuma com ela. Os testes passavam, porque
+> o emulador força `Código.js` em primeiro.
+>
+> Os schemas de `Código.js` podem referenciar as listas fechadas porque estão no **mesmo
+> arquivo**, acima. Fora disso: use uma função.
+>
+> `test/ordem-de-avaliacao.test.js` guarda a regra — avalia `src/` em ordem alfabética,
+> invertida, e arquivo por arquivo isolado.
+
 ## 2. ⛔ Regras invioláveis
 
 ### 2.1 Caminho único de escrita
 
-Front e ingestão **não escrevem célula**. Os dois chamam `createCard` / `updateCard` /
-`createAnotacao` / `registrar1a1`, e é lá que id é gerado, data é carimbada e valor é
-validado.
+Front e ingestão **não escrevem célula**. Os dois chamam a camada, e é lá que id é gerado,
+data é carimbada e valor é validado.
+
+| aba | criar | editar |
+|---|---|---|
+| `Kanban` | `createCard` | `updateCard` |
+| `Anotações` | `createAnotacao` | `updateAnotacao` |
+| `Notas` | `createNota` | `arquivarNota` — só a flag; ver abaixo |
+| `Pessoas` | `createPessoa` | `updatePessoa`, e `registrar1a1` só para a data do 1:1 |
 
 No dia em que dois lugares escreverem direto na aba, as regras divergem e o sintoma
 aparece num card com prazo e sem `criado_em`.
+
+**Nem toda edição é um `update` largo, e a assimetria é deliberada.** `Notas` só tem
+`arquivarNota` porque nota é registro de um momento — texto errado se arquiva e se
+reescreve. `Anotações` ganhou `updateAnotacao` apesar de também ser registro, e a razão é
+específica: a captura por voz resolve **nome falado** para `pessoa_id`, e a lista real tem
+homônimos ("Luiz", "João") e homófonos ("Vitor" / "João Victor"). Quando ela erra, o
+feedback entra na pessoa errada e aparece no 1:1 dela — e mover a anotação para o dono
+certo é um conserto de atribuição, não uma reescrita de história.
+
+O `05` nunca proibiu isso: ele diz *"edição é exclusiva do front"*, o que ele veda é a
+**skill** editar, porque captura assíncrona não desambigua qual registro se quis dizer.
 
 ### 2.2 `getLastRow()` não é confiável neste projeto
 
