@@ -115,7 +115,8 @@ se pulam sozinhos e dizem por quê.
 | `test/` | os 185 testes |
 | `ARQUITETURA.md` | como funciona por dentro, e o que nunca pode ser "simplificado" |
 | `EXECUTAR.md` | a execução local em detalhe |
-| `DEPLOY.md` | publicar numa conta Google de verdade |
+| `CONFIGURAR-GOOGLE.md` | instalar do zero numa conta Google: planilha, pastas, trigger, Web App e skills |
+| `DEPLOY.md` | publicar versão nova, escopos e runbook |
 
 ## O que não está aqui
 

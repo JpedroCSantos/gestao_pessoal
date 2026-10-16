@@ -7,6 +7,9 @@ Como subir o sistema numa conta Google de verdade. Para só ver funcionando, voc
 
 ## 1. Instalar do zero
 
+> O passo a passo detalhado, com pré-requisitos, teste de ponta a ponta e a configuração
+> das skills, está em [CONFIGURAR-GOOGLE.md](CONFIGURAR-GOOGLE.md). Abaixo, o resumo.
+
 ### Pré-requisitos
 
 - Uma conta Google com Drive e Sheets.
